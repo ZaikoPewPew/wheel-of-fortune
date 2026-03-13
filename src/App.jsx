@@ -608,22 +608,47 @@ export default function WheelOfFortune() {
                 {activeTab === "default" && (
                   <>
                     <div className="select-all-row">
-                      <button className="mini-btn" onClick={() => setFixedEnabled(Object.fromEntries(FIXED_PARTICIPANTS.map(p=>[p,true])))}>Все вкл</button>
-                      <button className="mini-btn" onClick={() => setFixedEnabled(Object.fromEntries(FIXED_PARTICIPANTS.map(p=>[p,false])))}>Все выкл</button>
+                      <button
+                        className="mini-btn"
+                        onClick={() =>
+                          setFixedEnabledByTeam(prev => ({
+                            ...prev,
+                            [currentTeam.id]: Object.fromEntries(currentTeam.fixed.map(p => [p, true])),
+                          }))
+                        }
+                      >
+                        Все вкл
+                      </button>
+                      <button
+                        className="mini-btn"
+                        onClick={() =>
+                          setFixedEnabledByTeam(prev => ({
+                            ...prev,
+                            [currentTeam.id]: Object.fromEntries(currentTeam.fixed.map(p => [p, false])),
+                          }))
+                        }
+                      >
+                        Все выкл
+                      </button>
                     </div>
                     <div className="fixed-list">
-                      {FIXED_PARTICIPANTS.map((p, i) => {
+                      {currentTeam.fixed.map((p, i) => {
                         const on = fixedEnabled[p];
                         return (
-                          <div key={p} className={`fixed-item ${on?"":"off"}`} onClick={() => toggleFixed(p)}>
-                            <div className={`toggle ${on?"on":"off"}`} />
-                            <div className="cdot" style={{ background: on ? COLORS[i%COLORS.length][0] : "rgba(255,255,255,0.18)" }} />
+                          <div key={p} className={`fixed-item ${on ? "off" : ""}`} onClick={() => toggleFixed(p)}>
+                            <div className={`toggle ${on ? "on" : "off"}`} />
+                            <div
+                              className="cdot"
+                              style={{ background: on ? COLORS[i % COLORS.length][0] : "rgba(255,255,255,0.18)" }}
+                            />
                             <span className="fname">{p}</span>
                           </div>
                         );
                       })}
                     </div>
-                    <div className="count-hint">{activeFixed.length} / {FIXED_PARTICIPANTS.length} активны</div>
+                    <div className="count-hint">
+                      {activeFixed.length} / {currentTeam.fixed.length} активны
+                    </div>
                   </>
                 )}
                 {activeTab === "custom" && (
