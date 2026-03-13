@@ -29,6 +29,27 @@ const FIXED_PARTICIPANTS = [
   "Илона Коско",
 ];
 
+const RKO_PARTICIPANTS = [
+  "Ваня Недбай",
+  "Вика Кистова",
+  "Таня Жмайло",
+  "Саша Демидов",
+  "Игорь Ефремов",
+  "Макс Завадский",
+  "Оля Копьева",
+  "Настя Роледер",
+  "Тёма Помозов",
+  "Леша Мидиницин",
+  "Катя Радченко",
+  "Ксюша Плаксина",
+  "Ваня Яблоновский",
+];
+
+const TEAMS = [
+  { id: "acquiring", label: "Эквайринг", fixed: FIXED_PARTICIPANTS },
+  { id: "rko", label: "РКО", fixed: RKO_PARTICIPANTS },
+];
+
 // ─── localStorage helpers ───────────────────────────────────────────────────
 const LS = {
   get: (key, fallback) => {
@@ -138,14 +159,35 @@ function HistoryPanel({ history }) {
 
 // ─── Main ────────────────────────────────────────────────────────────────────
 export default function WheelOfFortune() {
-  const [fixedEnabled, setFixedEnabled] = useState(() =>
-    LS.get("wof_fixedEnabled", Object.fromEntries(FIXED_PARTICIPANTS.map(p => [p, true])))
+  const [activeTeam, setActiveTeam] = useState(() =>
+    LS.get("wof2_activeTeam", "acquiring")
   );
-  const [customParticipants, setCustomParticipants] = useState(() => LS.get("wof_custom", []));
-  const [history, setHistory] = useState(() => LS.get("wof_history", []));
+  const [fixedEnabledByTeam, setFixedEnabledByTeam] = useState(() =>
+    LS.get("wof2_fixedEnabledByTeam", {
+      acquiring: Object.fromEntries(FIXED_PARTICIPANTS.map(p => [p, true])),
+      rko: Object.fromEntries(RKO_PARTICIPANTS.map(p => [p, true])),
+    })
+  );
+  const [customByTeam, setCustomByTeam] = useState(() =>
+    LS.get("wof2_customByTeam", {
+      acquiring: [],
+      rko: [],
+    })
+  );
+  const [historyByTeam, setHistoryByTeam] = useState(() =>
+    LS.get("wof2_historyByTeam", {
+      acquiring: [],
+      rko: [],
+    })
+  );
   const [input, setInput] = useState("");
   const [spinning, setSpinning] = useState(false);
-  const [rotation, setRotation] = useState(() => LS.get("wof_rotation", 0));
+  const [rotationByTeam, setRotationByTeam] = useState(() =>
+    LS.get("wof2_rotationByTeam", {
+      acquiring: 0,
+      rko: 0,
+    })
+  );
   const [winner, setWinner] = useState(null);
   const [showWinner, setShowWinner] = useState(false);
   const [confettiKey, setConfettiKey] = useState(0);
@@ -155,23 +197,40 @@ export default function WheelOfFortune() {
   const startRotation = useRef(0);
   const canvasRef = useRef(null);
 
-  // Persist state on change
-  useEffect(() => { LS.set("wof_fixedEnabled", fixedEnabled); }, [fixedEnabled]);
-  useEffect(() => { LS.set("wof_custom", customParticipants); }, [customParticipants]);
-  useEffect(() => { LS.set("wof_history", history); }, [history]);
-  useEffect(() => { LS.set("wof_rotation", rotation); }, [rotation]);
+  const currentTeam = TEAMS.find(t => t.id === activeTeam) || TEAMS[0];
+  const fixedEnabled = fixedEnabledByTeam[currentTeam.id] || {};
+  const customParticipants = customByTeam[currentTeam.id] || [];
+  const history = historyByTeam[currentTeam.id] || [];
+  const rotation = rotationByTeam[currentTeam.id] || 0;
 
-  // Ensure new fixed participants default to enabled if not yet in stored state
+  // Persist state on change
+  useEffect(() => { LS.set("wof2_activeTeam", activeTeam); }, [activeTeam]);
+  useEffect(() => { LS.set("wof2_fixedEnabledByTeam", fixedEnabledByTeam); }, [fixedEnabledByTeam]);
+  useEffect(() => { LS.set("wof2_customByTeam", customByTeam); }, [customByTeam]);
+  useEffect(() => { LS.set("wof2_historyByTeam", historyByTeam); }, [historyByTeam]);
+  useEffect(() => { LS.set("wof2_rotationByTeam", rotationByTeam); }, [rotationByTeam]);
+
+  // Ensure new fixed participants default to enabled per команды
   useEffect(() => {
-    setFixedEnabled(prev => {
-      const updated = { ...prev };
-      let changed = false;
-      FIXED_PARTICIPANTS.forEach(p => { if (!(p in updated)) { updated[p] = true; changed = true; } });
-      return changed ? updated : prev;
+    setFixedEnabledByTeam(prev => {
+      const next = { ...prev };
+      TEAMS.forEach(team => {
+        const src = team.fixed;
+        const map = { ...(next[team.id] || {}) };
+        let changed = false;
+        src.forEach(p => {
+          if (!(p in map)) {
+            map[p] = true;
+            changed = true;
+          }
+        });
+        if (changed) next[team.id] = map;
+      });
+      return next;
     });
   }, []);
 
-  const activeFixed = FIXED_PARTICIPANTS.filter(p => fixedEnabled[p]);
+  const activeFixed = currentTeam.fixed.filter(p => fixedEnabled[p]);
   const participants = [...activeFixed, ...customParticipants];
   const n = participants.length;
 
@@ -211,7 +270,7 @@ export default function WheelOfFortune() {
     const canvas = canvasRef.current;
     if (!canvas) return;
     drawWheel(canvas.getContext("2d"), rotation);
-  }, [drawWheel, rotation]);
+  }, [drawWheel, rotation, currentTeam.id]);
 
   const spin = () => {
     if (spinning || n < 2) return;
@@ -226,7 +285,10 @@ export default function WheelOfFortune() {
       const progress = Math.min(elapsed / duration, 1);
       const eased = easeOut(progress);
       const currentRot = startRotation.current + (totalSpin * eased * Math.PI) / 180;
-      setRotation(currentRot);
+      setRotationByTeam(prev => ({
+        ...prev,
+        [currentTeam.id]: currentRot,
+      }));
       if (progress < 1) {
         spinRef.current = requestAnimationFrame(animate);
       } else {
@@ -238,10 +300,13 @@ export default function WheelOfFortune() {
         const idx = Math.floor(angle / slice) % n;
         setTimeout(() => {
           const winnerName = participants[idx];
-          const entry = { winner: winnerName, date: TODAY(), time: TIME_NOW() };
+          const entry = { winner: winnerName, date: TODAY(), time: TIME_NOW(), team: currentTeam.id };
           setWinner(winnerName);
           setShowWinner(true);
-          setHistory(prev => [...prev, entry]);
+          setHistoryByTeam(prev => ({
+            ...prev,
+            [currentTeam.id]: [...(prev[currentTeam.id] || []), entry],
+          }));
           setConfettiKey(k => k + 1);
           setShowConfetti(true);
           setTimeout(() => setShowConfetti(false), 5000);
@@ -254,12 +319,27 @@ export default function WheelOfFortune() {
   const addCustom = () => {
     const name = input.trim();
     if (!name || participants.includes(name) || customParticipants.length >= 5) return;
-    setCustomParticipants(prev => [...prev, name]);
+    setCustomByTeam(prev => ({
+      ...prev,
+      [currentTeam.id]: [...(prev[currentTeam.id] || []), name],
+    }));
     setInput("");
   };
-  const removeCustom = (i) => setCustomParticipants(prev => prev.filter((_, idx) => idx !== i));
-  const toggleFixed = (name) => setFixedEnabled(prev => ({ ...prev, [name]: !prev[name] }));
-  const clearHistory = () => { if (confirm("Очистить всю историю?")) setHistory([]); };
+  const removeCustom = (i) =>
+    setCustomByTeam(prev => ({
+      ...prev,
+      [currentTeam.id]: (prev[currentTeam.id] || []).filter((_, idx) => idx !== i),
+    }));
+  const toggleFixed = (name) =>
+    setFixedEnabledByTeam(prev => ({
+      ...prev,
+      [currentTeam.id]: { ...(prev[currentTeam.id] || {}), [name]: !prev[currentTeam.id]?.[name] },
+    }));
+  const clearHistory = () => {
+    if (confirm("Очистить всю историю для этой команды?")) {
+      setHistoryByTeam(prev => ({ ...prev, [currentTeam.id]: [] }));
+    }
+  };
 
   return (
     <>
@@ -272,6 +352,24 @@ export default function WheelOfFortune() {
           background: radial-gradient(ellipse at 20% 20%, #1a0a2e 0%, #0d0d1a 60%, #00111a 100%);
           display: flex; flex-direction: column; align-items: center;
           padding: 32px 16px 48px; font-family: 'Nunito', sans-serif;
+        }
+        .teams-switch {
+          display: flex; gap: 8px; margin-bottom: 20px;
+          background: rgba(255,255,255,0.03);
+          padding: 4px; border-radius: 999px;
+          border: 1px solid rgba(255,255,255,0.08);
+        }
+        .team-btn {
+          flex: 1; border-radius: 999px; border: none; cursor: pointer;
+          padding: 6px 14px; font-size: 0.78rem; font-weight: 700;
+          font-family: 'Nunito', sans-serif;
+          color: rgba(255,255,255,0.55); background: transparent;
+          transition: all 0.2s; text-align: center;
+        }
+        .team-btn.active {
+          background: rgba(199,125,255,0.22);
+          color: #fff;
+          box-shadow: 0 0 18px rgba(199,125,255,0.4);
         }
         .title {
           font-family: 'Unbounded', sans-serif;
@@ -473,6 +571,17 @@ export default function WheelOfFortune() {
 
       <div className="app">
         <h1 className="title">🎡 Колесо Фортуны</h1>
+        <div className="teams-switch">
+          {TEAMS.map(team => (
+            <button
+              key={team.id}
+              className={`team-btn ${team.id === currentTeam.id ? "active" : ""}`}
+              onClick={() => setActiveTeam(team.id)}
+            >
+              {team.label}
+            </button>
+          ))}
+        </div>
         <div className="main">
 
           {/* Wheel */}
