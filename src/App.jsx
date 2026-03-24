@@ -45,24 +45,54 @@ const RKO_PARTICIPANTS = [
   "Ваня Яблоновский",
 ];
 
+const NEFIN_PARTICIPANTS = [
+  "Али Аскеров",
+  "Анастасия Кузина",
+  "Артем Никулин",
+  "Олег Шевнин",
+  "Андрей Шипигузов",
+  "Наталья Родина",
+  "Ирина Дуркина",
+];
+
 const TEAMS = [
   { id: "acquiring", label: "Эквайринг", fixed: FIXED_PARTICIPANTS },
   { id: "rko", label: "РКО", fixed: RKO_PARTICIPANTS },
+  { id: "nefin", label: "Нефины", fixed: NEFIN_PARTICIPANTS },
 ];
 
 // ─── localStorage helpers ───────────────────────────────────────────────────
 const LS = {
   get: (key, fallback) => {
-    try { const v = localStorage.getItem(key); return v !== null ? JSON.parse(v) : fallback; }
-    catch { return fallback; }
+    try {
+      const v = localStorage.getItem(key);
+      return v !== null ? JSON.parse(v) : fallback;
+    } catch {
+      return fallback;
+    }
   },
-  set: (key, val) => { try { localStorage.setItem(key, JSON.stringify(val)); } catch {} },
+  set: (key, val) => {
+    try {
+      localStorage.setItem(key, JSON.stringify(val));
+    } catch {}
+  },
 };
 
-const TODAY = () => new Date().toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
-const TIME_NOW = () => new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+const TODAY = () =>
+  new Date().toLocaleDateString("ru-RU", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+const TIME_NOW = () =>
+  new Date().toLocaleTimeString("ru-RU", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
-function easeOut(t) { return 1 - Math.pow(1 - t, 4); }
+function easeOut(t) {
+  return 1 - Math.pow(1 - t, 4);
+}
 
 // ─── Confetti ────────────────────────────────────────────────────────────────
 function FunConfetti({ active }) {
@@ -77,13 +107,18 @@ function FunConfetti({ active }) {
     const pieces = Array.from({ length: 220 }, (_, i) => {
       const isEmoji = i < 35;
       return {
-        x: Math.random() * canvas.width, y: -40 - Math.random() * 200,
-        w: 8 + Math.random() * 10, h: 6 + Math.random() * 6,
+        x: Math.random() * canvas.width,
+        y: -40 - Math.random() * 200,
+        w: 8 + Math.random() * 10,
+        h: 6 + Math.random() * 6,
         color: `hsl(${Math.random() * 360},90%,60%)`,
-        vx: (Math.random() - 0.5) * 5, vy: 2 + Math.random() * 5,
-        angle: Math.random() * 360, spin: (Math.random() - 0.5) * 7,
-        opacity: 1, isEmoji,
-        emoji: ["🍑","🫶","💖","✨"][Math.floor(Math.random()*4)],
+        vx: (Math.random() - 0.5) * 5,
+        vy: 2 + Math.random() * 5,
+        angle: Math.random() * 360,
+        spin: (Math.random() - 0.5) * 7,
+        opacity: 1,
+        isEmoji,
+        emoji: ["🍑", "🫶", "💖", "✨"][Math.floor(Math.random() * 4)],
         fontSize: 22 + Math.random() * 18,
       };
     });
@@ -92,35 +127,59 @@ function FunConfetti({ active }) {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       frame++;
       pieces.forEach((p) => {
-        p.x += p.vx; p.y += p.vy; p.angle += p.spin; p.vy += 0.07;
+        p.x += p.vx;
+        p.y += p.vy;
+        p.angle += p.spin;
+        p.vy += 0.07;
         if (frame > 110) p.opacity -= 0.009;
-        ctx.save(); ctx.globalAlpha = Math.max(0, p.opacity);
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, p.opacity);
         ctx.translate(p.x, p.y);
         if (p.isEmoji) {
-          ctx.font = `${p.fontSize}px serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-          ctx.rotate((p.angle * Math.PI) / 180); ctx.fillText(p.emoji, 0, 0);
+          ctx.font = `${p.fontSize}px serif`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.rotate((p.angle * Math.PI) / 180);
+          ctx.fillText(p.emoji, 0, 0);
         } else {
-          ctx.rotate((p.angle * Math.PI) / 180); ctx.fillStyle = p.color;
-          ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+          ctx.rotate((p.angle * Math.PI) / 180);
+          ctx.fillStyle = p.color;
+          ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
         }
         ctx.restore();
       });
-      const alive = pieces.filter(p => p.opacity > 0 && p.y < canvas.height + 80);
-      pieces.length = 0; pieces.push(...alive);
+      const alive = pieces.filter(
+        (p) => p.opacity > 0 && p.y < canvas.height + 80,
+      );
+      pieces.length = 0;
+      pieces.push(...alive);
       if (pieces.length > 0) animRef.current = requestAnimationFrame(draw);
       else ctx.clearRect(0, 0, canvas.width, canvas.height);
     };
     animRef.current = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(animRef.current);
   }, [active]);
-  return <canvas ref={canvasRef} style={{ position:"fixed",top:0,left:0,width:"100vw",height:"100vh",pointerEvents:"none",zIndex:9999 }} />;
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        width: "100vw",
+        height: "100vh",
+        pointerEvents: "none",
+        zIndex: 9999,
+      }}
+    />
+  );
 }
 
 // ─── History Panel ───────────────────────────────────────────────────────────
 function HistoryPanel({ history }) {
   // Group by date
   const byDate = {};
-  [...history].reverse().forEach(entry => {
+  [...history].reverse().forEach((entry) => {
     if (!byDate[entry.date]) byDate[entry.date] = [];
     byDate[entry.date].push(entry);
   });
@@ -128,20 +187,29 @@ function HistoryPanel({ history }) {
 
   const labelDate = (d) => {
     const today = TODAY();
-    const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
-    const yStr = yesterday.toLocaleDateString("ru-RU", { day:"2-digit", month:"2-digit", year:"numeric" });
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yStr = yesterday.toLocaleDateString("ru-RU", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
     if (d === today) return "Сегодня";
     if (d === yStr) return "Вчера";
     return d;
   };
 
   if (dates.length === 0) {
-    return <div className="empty-hint" style={{padding:"24px 0"}}>История пока пуста 🕊️</div>;
+    return (
+      <div className="empty-hint" style={{ padding: "24px 0" }}>
+        История пока пуста 🕊️
+      </div>
+    );
   }
 
   return (
     <div className="history-list">
-      {dates.map(date => (
+      {dates.map((date) => (
         <div key={date} className="history-group">
           <div className="history-date-label">{labelDate(date)}</div>
           {byDate[date].map((entry, i) => (
@@ -160,25 +228,28 @@ function HistoryPanel({ history }) {
 // ─── Main ────────────────────────────────────────────────────────────────────
 export default function WheelOfFortune() {
   const [activeTeam, setActiveTeam] = useState(() =>
-    LS.get("wof2_activeTeam", "acquiring")
+    LS.get("wof2_activeTeam", "acquiring"),
   );
   const [fixedEnabledByTeam, setFixedEnabledByTeam] = useState(() =>
     LS.get("wof2_fixedEnabledByTeam", {
-      acquiring: Object.fromEntries(FIXED_PARTICIPANTS.map(p => [p, true])),
-      rko: Object.fromEntries(RKO_PARTICIPANTS.map(p => [p, true])),
-    })
+      acquiring: Object.fromEntries(FIXED_PARTICIPANTS.map((p) => [p, true])),
+      rko: Object.fromEntries(RKO_PARTICIPANTS.map((p) => [p, true])),
+      nefin: Object.fromEntries(NEFIN_PARTICIPANTS.map((p) => [p, true])),
+    }),
   );
   const [customByTeam, setCustomByTeam] = useState(() =>
     LS.get("wof2_customByTeam", {
       acquiring: [],
       rko: [],
-    })
+      nefin: [],
+    }),
   );
   const [historyByTeam, setHistoryByTeam] = useState(() =>
     LS.get("wof2_historyByTeam", {
       acquiring: [],
       rko: [],
-    })
+      nefin: [],
+    }),
   );
   const [input, setInput] = useState("");
   const [spinning, setSpinning] = useState(false);
@@ -186,7 +257,8 @@ export default function WheelOfFortune() {
     LS.get("wof2_rotationByTeam", {
       acquiring: 0,
       rko: 0,
-    })
+      nefin: 0,
+    }),
   );
   const [winner, setWinner] = useState(null);
   const [showWinner, setShowWinner] = useState(false);
@@ -197,28 +269,38 @@ export default function WheelOfFortune() {
   const startRotation = useRef(0);
   const canvasRef = useRef(null);
 
-  const currentTeam = TEAMS.find(t => t.id === activeTeam) || TEAMS[0];
+  const currentTeam = TEAMS.find((t) => t.id === activeTeam) || TEAMS[0];
   const fixedEnabled = fixedEnabledByTeam[currentTeam.id] || {};
   const customParticipants = customByTeam[currentTeam.id] || [];
   const history = historyByTeam[currentTeam.id] || [];
   const rotation = rotationByTeam[currentTeam.id] || 0;
 
   // Persist state on change
-  useEffect(() => { LS.set("wof2_activeTeam", activeTeam); }, [activeTeam]);
-  useEffect(() => { LS.set("wof2_fixedEnabledByTeam", fixedEnabledByTeam); }, [fixedEnabledByTeam]);
-  useEffect(() => { LS.set("wof2_customByTeam", customByTeam); }, [customByTeam]);
-  useEffect(() => { LS.set("wof2_historyByTeam", historyByTeam); }, [historyByTeam]);
-  useEffect(() => { LS.set("wof2_rotationByTeam", rotationByTeam); }, [rotationByTeam]);
+  useEffect(() => {
+    LS.set("wof2_activeTeam", activeTeam);
+  }, [activeTeam]);
+  useEffect(() => {
+    LS.set("wof2_fixedEnabledByTeam", fixedEnabledByTeam);
+  }, [fixedEnabledByTeam]);
+  useEffect(() => {
+    LS.set("wof2_customByTeam", customByTeam);
+  }, [customByTeam]);
+  useEffect(() => {
+    LS.set("wof2_historyByTeam", historyByTeam);
+  }, [historyByTeam]);
+  useEffect(() => {
+    LS.set("wof2_rotationByTeam", rotationByTeam);
+  }, [rotationByTeam]);
 
   // Ensure new fixed participants default to enabled per команды
   useEffect(() => {
-    setFixedEnabledByTeam(prev => {
+    setFixedEnabledByTeam((prev) => {
       const next = { ...prev };
-      TEAMS.forEach(team => {
+      TEAMS.forEach((team) => {
         const src = team.fixed;
         const map = { ...(next[team.id] || {}) };
         let changed = false;
-        src.forEach(p => {
+        src.forEach((p) => {
           if (!(p in map)) {
             map[p] = true;
             changed = true;
@@ -230,41 +312,73 @@ export default function WheelOfFortune() {
     });
   }, []);
 
-  const activeFixed = currentTeam.fixed.filter(p => fixedEnabled[p]);
+  const activeFixed = currentTeam.fixed.filter((p) => fixedEnabled[p]);
   const participants = [...activeFixed, ...customParticipants];
   const n = participants.length;
 
-  const drawWheel = useCallback((ctx, rot) => {
-    if (n === 0) return;
-    const cx = 240, cy = 240, r = 220;
-    const slice = (2 * Math.PI) / n;
-    ctx.clearRect(0, 0, 480, 480);
-    ctx.save();
-    ctx.shadowColor = "rgba(0,0,0,0.4)"; ctx.shadowBlur = 35;
-    ctx.beginPath(); ctx.arc(cx, cy, r, 0, 2 * Math.PI);
-    ctx.fillStyle = "#111"; ctx.fill(); ctx.restore();
-    for (let i = 0; i < n; i++) {
-      const start = rot + i * slice, end = start + slice;
-      const [c1, c2] = COLORS[i % COLORS.length];
-      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-      grad.addColorStop(0, c2); grad.addColorStop(1, c1);
-      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, r, start, end);
-      ctx.closePath(); ctx.fillStyle = grad; ctx.fill();
-      ctx.strokeStyle = "rgba(255,255,255,0.15)"; ctx.lineWidth = 1.5; ctx.stroke();
-      ctx.save(); ctx.translate(cx, cy); ctx.rotate(start + slice / 2);
-      ctx.textAlign = "right"; ctx.fillStyle = "#fff";
-      ctx.shadowColor = "rgba(0,0,0,0.6)"; ctx.shadowBlur = 4;
-      const fontSize = Math.min(14, Math.max(8, 165 / n));
-      ctx.font = `bold ${fontSize}px 'Nunito', sans-serif`;
-      const name = participants[i].length > 17 ? participants[i].slice(0, 16) + "…" : participants[i];
-      ctx.fillText(name, r - 14, fontSize / 3); ctx.restore();
-    }
-    ctx.beginPath(); ctx.arc(cx, cy, 22, 0, 2 * Math.PI);
-    const cg = ctx.createRadialGradient(cx-5, cy-5, 2, cx, cy, 22);
-    cg.addColorStop(0, "#fff"); cg.addColorStop(1, "#ccc");
-    ctx.fillStyle = cg; ctx.shadowColor = "rgba(0,0,0,0.3)"; ctx.shadowBlur = 8;
-    ctx.fill(); ctx.strokeStyle = "rgba(0,0,0,0.12)"; ctx.lineWidth = 2; ctx.stroke();
-  }, [participants, n]);
+  const drawWheel = useCallback(
+    (ctx, rot) => {
+      if (n === 0) return;
+      const cx = 240,
+        cy = 240,
+        r = 220;
+      const slice = (2 * Math.PI) / n;
+      ctx.clearRect(0, 0, 480, 480);
+      ctx.save();
+      ctx.shadowColor = "rgba(0,0,0,0.4)";
+      ctx.shadowBlur = 35;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, 2 * Math.PI);
+      ctx.fillStyle = "#111";
+      ctx.fill();
+      ctx.restore();
+      for (let i = 0; i < n; i++) {
+        const start = rot + i * slice,
+          end = start + slice;
+        const [c1, c2] = COLORS[i % COLORS.length];
+        const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+        grad.addColorStop(0, c2);
+        grad.addColorStop(1, c1);
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.arc(cx, cy, r, start, end);
+        ctx.closePath();
+        ctx.fillStyle = grad;
+        ctx.fill();
+        ctx.strokeStyle = "rgba(255,255,255,0.15)";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(start + slice / 2);
+        ctx.textAlign = "right";
+        ctx.fillStyle = "#fff";
+        ctx.shadowColor = "rgba(0,0,0,0.6)";
+        ctx.shadowBlur = 4;
+        const fontSize = Math.min(14, Math.max(8, 165 / n));
+        ctx.font = `bold ${fontSize}px 'Nunito', sans-serif`;
+        const name =
+          participants[i].length > 17
+            ? participants[i].slice(0, 16) + "…"
+            : participants[i];
+        ctx.fillText(name, r - 14, fontSize / 3);
+        ctx.restore();
+      }
+      ctx.beginPath();
+      ctx.arc(cx, cy, 22, 0, 2 * Math.PI);
+      const cg = ctx.createRadialGradient(cx - 5, cy - 5, 2, cx, cy, 22);
+      cg.addColorStop(0, "#fff");
+      cg.addColorStop(1, "#ccc");
+      ctx.fillStyle = cg;
+      ctx.shadowColor = "rgba(0,0,0,0.3)";
+      ctx.shadowBlur = 8;
+      ctx.fill();
+      ctx.strokeStyle = "rgba(0,0,0,0.12)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    },
+    [participants, n],
+  );
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -274,7 +388,9 @@ export default function WheelOfFortune() {
 
   const spin = () => {
     if (spinning || n < 2) return;
-    setWinner(null); setShowWinner(false); setShowConfetti(false);
+    setWinner(null);
+    setShowWinner(false);
+    setShowConfetti(false);
     const totalSpin = 2400 + Math.random() * 1800;
     const duration = 4200 + Math.random() * 800;
     const startTime = performance.now();
@@ -284,8 +400,9 @@ export default function WheelOfFortune() {
       const elapsed = now - startTime;
       const progress = Math.min(elapsed / duration, 1);
       const eased = easeOut(progress);
-      const currentRot = startRotation.current + (totalSpin * eased * Math.PI) / 180;
-      setRotationByTeam(prev => ({
+      const currentRot =
+        startRotation.current + (totalSpin * eased * Math.PI) / 180;
+      setRotationByTeam((prev) => ({
         ...prev,
         [currentTeam.id]: currentRot,
       }));
@@ -294,20 +411,28 @@ export default function WheelOfFortune() {
       } else {
         setSpinning(false);
         const slice = (2 * Math.PI) / n;
-        const normalized = ((currentRot % (2*Math.PI)) + 2*Math.PI) % (2*Math.PI);
+        const normalized =
+          ((currentRot % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
         const pointer = (3 * Math.PI) / 2;
-        const angle = ((pointer - normalized) % (2*Math.PI) + 2*Math.PI) % (2*Math.PI);
+        const angle =
+          (((pointer - normalized) % (2 * Math.PI)) + 2 * Math.PI) %
+          (2 * Math.PI);
         const idx = Math.floor(angle / slice) % n;
         setTimeout(() => {
           const winnerName = participants[idx];
-          const entry = { winner: winnerName, date: TODAY(), time: TIME_NOW(), team: currentTeam.id };
+          const entry = {
+            winner: winnerName,
+            date: TODAY(),
+            time: TIME_NOW(),
+            team: currentTeam.id,
+          };
           setWinner(winnerName);
           setShowWinner(true);
-          setHistoryByTeam(prev => ({
+          setHistoryByTeam((prev) => ({
             ...prev,
             [currentTeam.id]: [...(prev[currentTeam.id] || []), entry],
           }));
-          setConfettiKey(k => k + 1);
+          setConfettiKey((k) => k + 1);
           setShowConfetti(true);
           setTimeout(() => setShowConfetti(false), 5000);
         }, 300);
@@ -318,26 +443,32 @@ export default function WheelOfFortune() {
 
   const addCustom = () => {
     const name = input.trim();
-    if (!name || participants.includes(name) || customParticipants.length >= 5) return;
-    setCustomByTeam(prev => ({
+    if (!name || participants.includes(name) || customParticipants.length >= 5)
+      return;
+    setCustomByTeam((prev) => ({
       ...prev,
       [currentTeam.id]: [...(prev[currentTeam.id] || []), name],
     }));
     setInput("");
   };
   const removeCustom = (i) =>
-    setCustomByTeam(prev => ({
+    setCustomByTeam((prev) => ({
       ...prev,
-      [currentTeam.id]: (prev[currentTeam.id] || []).filter((_, idx) => idx !== i),
+      [currentTeam.id]: (prev[currentTeam.id] || []).filter(
+        (_, idx) => idx !== i,
+      ),
     }));
   const toggleFixed = (name) =>
-    setFixedEnabledByTeam(prev => ({
+    setFixedEnabledByTeam((prev) => ({
       ...prev,
-      [currentTeam.id]: { ...(prev[currentTeam.id] || {}), [name]: !prev[currentTeam.id]?.[name] },
+      [currentTeam.id]: {
+        ...(prev[currentTeam.id] || {}),
+        [name]: !prev[currentTeam.id]?.[name],
+      },
     }));
   const clearHistory = () => {
     if (confirm("Очистить всю историю для этой команды?")) {
-      setHistoryByTeam(prev => ({ ...prev, [currentTeam.id]: [] }));
+      setHistoryByTeam((prev) => ({ ...prev, [currentTeam.id]: [] }));
     }
   };
 
@@ -572,7 +703,7 @@ export default function WheelOfFortune() {
       <div className="app">
         <h1 className="title">🎡 Колесо Фортуны</h1>
         <div className="teams-switch">
-          {TEAMS.map(team => (
+          {TEAMS.map((team) => (
             <button
               key={team.id}
               className={`team-btn ${team.id === currentTeam.id ? "active" : ""}`}
@@ -583,26 +714,38 @@ export default function WheelOfFortune() {
           ))}
         </div>
         <div className="main">
-
           {/* Wheel */}
           <div className="wheel-section">
             <div className="wheel-wrap">
               <div className="pointer" />
               <canvas ref={canvasRef} width={480} height={480} />
             </div>
-            <button className="spin-btn" onClick={spin} disabled={spinning || n < 2}>
+            <button
+              className="spin-btn"
+              onClick={spin}
+              disabled={spinning || n < 2}
+            >
               {spinning ? "Крутится... 🌀" : "🎲 КРУТИТЬКИ!"}
             </button>
           </div>
 
           {/* Right column: participants + history */}
           <div className="panels-col">
-
             {/* Participants panel */}
             <div className="panel">
               <div className="tabs">
-                <button className={`tab-btn ${activeTab==="default"?"active":""}`} onClick={() => setActiveTab("default")}>👥 Дефолтные</button>
-                <button className={`tab-btn ${activeTab==="custom"?"active":""}`} onClick={() => setActiveTab("custom")}>✏️ Свои</button>
+                <button
+                  className={`tab-btn ${activeTab === "default" ? "active" : ""}`}
+                  onClick={() => setActiveTab("default")}
+                >
+                  👥 Дефолтные
+                </button>
+                <button
+                  className={`tab-btn ${activeTab === "custom" ? "active" : ""}`}
+                  onClick={() => setActiveTab("custom")}
+                >
+                  ✏️ Свои
+                </button>
               </div>
               <div className="tab-content">
                 {activeTab === "default" && (
@@ -611,9 +754,11 @@ export default function WheelOfFortune() {
                       <button
                         className="mini-btn"
                         onClick={() =>
-                          setFixedEnabledByTeam(prev => ({
+                          setFixedEnabledByTeam((prev) => ({
                             ...prev,
-                            [currentTeam.id]: Object.fromEntries(currentTeam.fixed.map(p => [p, true])),
+                            [currentTeam.id]: Object.fromEntries(
+                              currentTeam.fixed.map((p) => [p, true]),
+                            ),
                           }))
                         }
                       >
@@ -622,9 +767,11 @@ export default function WheelOfFortune() {
                       <button
                         className="mini-btn"
                         onClick={() =>
-                          setFixedEnabledByTeam(prev => ({
+                          setFixedEnabledByTeam((prev) => ({
                             ...prev,
-                            [currentTeam.id]: Object.fromEntries(currentTeam.fixed.map(p => [p, false])),
+                            [currentTeam.id]: Object.fromEntries(
+                              currentTeam.fixed.map((p) => [p, false]),
+                            ),
                           }))
                         }
                       >
@@ -635,11 +782,19 @@ export default function WheelOfFortune() {
                       {currentTeam.fixed.map((p, i) => {
                         const on = fixedEnabled[p];
                         return (
-                          <div key={p} className={`fixed-item ${on ? "off" : ""}`} onClick={() => toggleFixed(p)}>
+                          <div
+                            key={p}
+                            className={`fixed-item ${on ? "off" : ""}`}
+                            onClick={() => toggleFixed(p)}
+                          >
                             <div className={`toggle ${on ? "on" : "off"}`} />
                             <div
                               className="cdot"
-                              style={{ background: on ? COLORS[i % COLORS.length][0] : "rgba(255,255,255,0.18)" }}
+                              style={{
+                                background: on
+                                  ? COLORS[i % COLORS.length][0]
+                                  : "rgba(255,255,255,0.18)",
+                              }}
                             />
                             <span className="fname">{p}</span>
                           </div>
@@ -654,22 +809,52 @@ export default function WheelOfFortune() {
                 {activeTab === "custom" && (
                   <>
                     <div className="add-row">
-                      <input className="add-input" placeholder="Имя участника..." value={input}
-                        onChange={e => setInput(e.target.value)}
-                        onKeyDown={e => e.key==="Enter" && addCustom()} maxLength={20} />
-                      <button className="add-btn" onClick={addCustom} disabled={!input.trim() || customParticipants.length >= 5}>+</button>
+                      <input
+                        className="add-input"
+                        placeholder="Имя участника..."
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && addCustom()}
+                        maxLength={20}
+                      />
+                      <button
+                        className="add-btn"
+                        onClick={addCustom}
+                        disabled={
+                          !input.trim() || customParticipants.length >= 5
+                        }
+                      >
+                        +
+                      </button>
                     </div>
                     <div className="custom-list">
-                      {customParticipants.length === 0 && <div className="empty-hint">Нет своих участников</div>}
+                      {customParticipants.length === 0 && (
+                        <div className="empty-hint">Нет своих участников</div>
+                      )}
                       {customParticipants.map((p, i) => (
                         <div className="custom-item" key={p}>
-                          <div className="cdot" style={{ background: COLORS[(activeFixed.length+i)%COLORS.length][0] }} />
+                          <div
+                            className="cdot"
+                            style={{
+                              background:
+                                COLORS[
+                                  (activeFixed.length + i) % COLORS.length
+                                ][0],
+                            }}
+                          />
                           <span className="cname">{p}</span>
-                          <button className="del-btn" onClick={() => removeCustom(i)}>✕</button>
+                          <button
+                            className="del-btn"
+                            onClick={() => removeCustom(i)}
+                          >
+                            ✕
+                          </button>
                         </div>
                       ))}
                     </div>
-                    <div className="count-hint">{customParticipants.length} / 5 участников</div>
+                    <div className="count-hint">
+                      {customParticipants.length} / 5 участников
+                    </div>
                   </>
                 )}
               </div>
@@ -679,13 +864,16 @@ export default function WheelOfFortune() {
             <div className="history-panel">
               <div className="history-header">
                 <div className="history-title">📜 История</div>
-                {history.length > 0 && <button className="clear-btn" onClick={clearHistory}>очистить</button>}
+                {history.length > 0 && (
+                  <button className="clear-btn" onClick={clearHistory}>
+                    очистить
+                  </button>
+                )}
               </div>
               <div className="history-scroll">
                 <HistoryPanel history={history} />
               </div>
             </div>
-
           </div>
         </div>
       </div>
@@ -694,12 +882,14 @@ export default function WheelOfFortune() {
 
       {showWinner && winner && (
         <div className="winner-overlay" onClick={() => setShowWinner(false)}>
-          <div className="winner-card" onClick={e => e.stopPropagation()}>
+          <div className="winner-card" onClick={(e) => e.stopPropagation()}>
             <span className="cry">😭</span>
             <div className="wlabel">Соболезнуем...</div>
             <div className="wname">{winner}</div>
             <div className="wsub">С новым годом 🎄</div>
-            <button className="close-btn" onClick={() => setShowWinner(false)}>Закрыть</button>
+            <button className="close-btn" onClick={() => setShowWinner(false)}>
+              Закрыть
+            </button>
           </div>
         </div>
       )}
