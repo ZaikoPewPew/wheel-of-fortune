@@ -78,9 +78,34 @@ const WHEEL_SIZE = 560;
 const VIKA_WINNER_IMAGE =
   "https://static-cdn.jtvnw.net/jtv_user_pictures/92d2f6bf-fcf8-4fc7-a8e6-5fadc57ca820-profile_image-70x70.png";
 
-function getWinnerSpecialImage(teamId, winnerName) {
+const WINNER_MEME_IMAGE =
+  "https://images.meme-arsenal.com/a40fe7393d739a369ae2d4bd7e111f4d.jpg";
+
+let winnerMemePreload = null;
+
+function preloadWinnerMeme() {
+  if (winnerMemePreload) return winnerMemePreload;
+  winnerMemePreload = new Promise((resolve, reject) => {
+    const img = new Image();
+    img.decoding = "async";
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = WINNER_MEME_IMAGE;
+  });
+  return winnerMemePreload;
+}
+
+preloadWinnerMeme();
+
+const TEAMS_WITH_MEME_WINNER = new Set(["acquiring", "rko", "nefin"]);
+
+function getWinnerVisual(teamId, winnerName) {
+  if (teamId === "products") return null;
   if (teamId === "acquiring" && winnerName === "Виктория Кистова") {
-    return VIKA_WINNER_IMAGE;
+    return { src: VIKA_WINNER_IMAGE, className: "winner-avatar" };
+  }
+  if (TEAMS_WITH_MEME_WINNER.has(teamId)) {
+    return { src: WINNER_MEME_IMAGE, className: "winner-meme" };
   }
   return null;
 }
@@ -199,6 +224,201 @@ function FunConfetti({ active }) {
   );
 }
 
+// ─── Milk splash (physics burst from winner card) ───────────────────────────
+function MilkSplash({ active, cardRef }) {
+  const canvasRef = useRef(null);
+  const animRef = useRef(null);
+
+  useEffect(() => {
+    if (!active || !cardRef?.current) return;
+
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    let cancelled = false;
+    let onResize = null;
+
+    const resize = () => {
+      canvas.width = window.innerWidth * dpr;
+      canvas.height = window.innerHeight * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    };
+
+    const startBurst = () => {
+      if (cancelled || !cardRef.current) return;
+
+    resize();
+
+    const rect = cardRef.current.getBoundingClientRect();
+    const ox = rect.left + rect.width / 2;
+    const oy = rect.top + rect.height / 2;
+
+    const particles = [];
+
+    const spawnBurst = (count, opts = {}) => {
+      const {
+        speedMin = 4,
+        speedMax = 20,
+        radiusMin = 2,
+        radiusMax = 12,
+        spread = 1,
+        blobChance = 0.4,
+        mist = false,
+      } = opts;
+      for (let i = 0; i < count; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = speedMin + Math.random() * (speedMax - speedMin);
+        const isBlob = !mist && Math.random() < blobChance;
+        particles.push({
+          x: ox + (Math.random() - 0.5) * 50 * spread,
+          y: oy + (Math.random() - 0.5) * 40 * spread,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed - 2 - Math.random() * 6,
+          radius: radiusMin + Math.random() * (radiusMax - radiusMin),
+          opacity: mist ? 0.25 + Math.random() * 0.35 : 0.7 + Math.random() * 0.3,
+          life: 1,
+          decay: mist ? 0.004 + Math.random() * 0.006 : 0.0015 + Math.random() * 0.003,
+          stretch: isBlob,
+          mist,
+          wobble: Math.random() * Math.PI * 2,
+        });
+      }
+    };
+
+    spawnBurst(140, { speedMin: 6, speedMax: 22, radiusMax: 16, blobChance: 0.45 });
+    spawnBurst(90, { speedMin: 10, speedMax: 28, radiusMax: 6, blobChance: 0.1, mist: true });
+    spawnBurst(50, { speedMin: 2, speedMax: 10, radiusMin: 8, radiusMax: 22, spread: 0.5, blobChance: 0.9 });
+
+    const rings = [
+      { x: ox, y: oy, r: 8, maxR: 200, opacity: 0.55, lineW: 14 },
+      { x: ox, y: oy, r: 20, maxR: 280, opacity: 0.35, lineW: 6 },
+    ];
+
+    let flash = 1;
+    let frame = 0;
+
+    const draw = () => {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      ctx.clearRect(0, 0, w, h);
+      frame++;
+
+      if (flash > 0) {
+        const g = ctx.createRadialGradient(ox, oy, 0, ox, oy, 80 + (1 - flash) * 120);
+        g.addColorStop(0, `rgba(255,255,255,${flash * 0.5})`);
+        g.addColorStop(0.4, `rgba(255,255,255,${flash * 0.15})`);
+        g.addColorStop(1, "rgba(255,255,255,0)");
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, w, h);
+        flash -= 0.08;
+      }
+
+      for (let r = rings.length - 1; r >= 0; r--) {
+        const ring = rings[r];
+        ring.r += 7 + frame * 0.02;
+        ring.opacity -= 0.018;
+        if (ring.opacity <= 0 || ring.r > ring.maxR) {
+          rings.splice(r, 1);
+          continue;
+        }
+        ctx.beginPath();
+        ctx.arc(ring.x, ring.y, ring.r, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(255,255,255,${ring.opacity * 0.4})`;
+        ctx.lineWidth = ring.lineW * ring.opacity;
+        ctx.stroke();
+      }
+
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.vy += p.mist ? 0.12 : 0.38;
+        p.vx *= 0.988;
+        p.vy *= 0.988;
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life -= p.decay;
+        p.wobble += 0.12;
+
+        const floor = h - p.radius;
+        if (p.y > floor && p.vy > 0) {
+          p.y = floor;
+          p.vy *= -0.32 - Math.random() * 0.08;
+          p.vx *= 0.65;
+          p.radius *= 0.92;
+        }
+
+        if (p.life <= 0 || p.radius < 0.4) {
+          particles.splice(i, 1);
+          continue;
+        }
+
+        const alpha = p.opacity * p.life;
+        const speed = Math.hypot(p.vx, p.vy);
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = p.mist
+          ? "rgba(255,255,255,0.85)"
+          : `rgba(${248 + Math.sin(p.wobble) * 4},${248 + Math.cos(p.wobble) * 4},255,0.98)`;
+
+        if (p.stretch && speed > 1) {
+          const ang = Math.atan2(p.vy, p.vx);
+          ctx.translate(p.x, p.y);
+          ctx.rotate(ang);
+          const stretch = 1 + Math.min(speed * 0.1, 3);
+          ctx.beginPath();
+          ctx.ellipse(0, 0, p.radius * stretch, p.radius / (stretch * 0.85), 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.shadowColor = "rgba(255,255,255,0.4)";
+          ctx.shadowBlur = 6;
+        } else {
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      if (particles.length > 0 || rings.length > 0 || flash > 0) {
+        animRef.current = requestAnimationFrame(draw);
+      } else {
+        ctx.clearRect(0, 0, w, h);
+      }
+    };
+
+    onResize = () => resize();
+    window.addEventListener("resize", onResize);
+    animRef.current = requestAnimationFrame(draw);
+    };
+
+    const layoutFrame = requestAnimationFrame(() => {
+      requestAnimationFrame(startBurst);
+    });
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(layoutFrame);
+      if (onResize) window.removeEventListener("resize", onResize);
+      cancelAnimationFrame(animRef.current);
+    };
+  }, [active, cardRef]);
+
+  if (!active) return null;
+
+  return (
+    <canvas
+      ref={canvasRef}
+      aria-hidden
+      style={{
+        position: "fixed",
+        inset: 0,
+        width: "100vw",
+        height: "100vh",
+        pointerEvents: "none",
+        zIndex: 9001,
+      }}
+    />
+  );
+}
+
 // ─── History Panel ───────────────────────────────────────────────────────────
 function HistoryPanel({ history }) {
   // Group by date
@@ -297,12 +517,17 @@ export default function WheelOfFortune() {
   const spinRef = useRef(null);
   const startRotation = useRef(0);
   const canvasRef = useRef(null);
+  const winnerCardRef = useRef(null);
 
   const currentTeam = TEAMS.find((t) => t.id === activeTeam) || TEAMS[0];
   const fixedEnabled = fixedEnabledByTeam[currentTeam.id] || {};
   const customParticipants = customByTeam[currentTeam.id] || [];
   const history = historyByTeam[currentTeam.id] || [];
   const rotation = rotationByTeam[currentTeam.id] || 0;
+
+  useEffect(() => {
+    preloadWinnerMeme().catch(() => {});
+  }, []);
 
   // Persist state on change
   useEffect(() => {
@@ -463,9 +688,11 @@ export default function WheelOfFortune() {
             ...prev,
             [currentTeam.id]: [...(prev[currentTeam.id] || []), entry],
           }));
-          setConfettiKey((k) => k + 1);
-          setShowConfetti(true);
-          setTimeout(() => setShowConfetti(false), 5000);
+          if (currentTeam.id !== "acquiring") {
+            setConfettiKey((k) => k + 1);
+            setShowConfetti(true);
+            setTimeout(() => setShowConfetti(false), 5000);
+          }
         }, 300);
       }
     };
@@ -508,7 +735,7 @@ export default function WheelOfFortune() {
     setWinnerTeamId(null);
   };
 
-  const winnerSpecialImage = getWinnerSpecialImage(winnerTeamId, winner);
+  const winnerVisual = getWinnerVisual(winnerTeamId, winner);
 
   return (
     <>
@@ -516,6 +743,10 @@ export default function WheelOfFortune() {
         @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;900&family=Unbounded:wght@700;900&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { background: #0d0d1a; }
+        .winner-meme-preload {
+          position: absolute; width: 0; height: 0; opacity: 0;
+          pointer-events: none; overflow: hidden;
+        }
         .app {
           min-height: 100vh;
           background: radial-gradient(ellipse at 20% 20%, #1a0a2e 0%, #0d0d1a 60%, #00111a 100%);
@@ -783,12 +1014,14 @@ export default function WheelOfFortune() {
         }
         @keyframes fadeIn { from { opacity:0 } to { opacity:1 } }
         .winner-card {
+          position: relative; z-index: 9002;
           background: linear-gradient(135deg, #1a0a2e, #0d1a2e);
           border: 2px solid rgba(255,100,100,0.35); border-radius: 24px;
           padding: 44px 52px; text-align: center;
           box-shadow: 0 0 80px rgba(255,80,80,0.2), 0 0 160px rgba(200,50,50,0.1);
           animation: popIn 0.5s cubic-bezier(0.175,0.885,0.32,1.275);
           max-width: 420px; width: 90%;
+          overflow: visible;
         }
         @keyframes popIn { from { transform:scale(0.6);opacity:0 } to { transform:scale(1);opacity:1 } }
         .cry { font-size: 3.5rem; margin-bottom: 12px; display: block; }
@@ -802,6 +1035,14 @@ export default function WheelOfFortune() {
         @keyframes avatarPop {
           from { transform: scale(0.4); opacity: 0; }
           to { transform: scale(1); opacity: 1; }
+        }
+        .winner-meme {
+          width: min(200px, 70vw); height: auto; max-height: 180px;
+          margin: 0 auto 16px; display: block; object-fit: contain;
+          border-radius: 14px;
+          border: 2px solid rgba(255,255,255,0.15);
+          box-shadow: 0 0 28px rgba(255,255,255,0.12);
+          animation: avatarPop 0.6s cubic-bezier(0.175,0.885,0.32,1.275);
         }
         .wlabel {
           font-family: 'Unbounded', sans-serif; font-size: 0.68rem; letter-spacing: 3px;
@@ -831,6 +1072,14 @@ export default function WheelOfFortune() {
           .panels-col { width: 100%; }
         }
       `}</style>
+
+      <img
+        src={WINNER_MEME_IMAGE}
+        alt=""
+        aria-hidden
+        className="winner-meme-preload"
+        fetchPriority="high"
+      />
 
       <div className="app">
         <header className="app-header">
@@ -1022,11 +1271,20 @@ export default function WheelOfFortune() {
 
       {showWinner && winner && (
         <div className="winner-overlay" onClick={closeWinner}>
-          <div className="winner-card" onClick={(e) => e.stopPropagation()}>
-            {winnerSpecialImage ? (
+          <MilkSplash
+            key={confettiKey}
+            active={showWinner}
+            cardRef={winnerCardRef}
+          />
+          <div
+            ref={winnerCardRef}
+            className="winner-card"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {winnerVisual ? (
               <img
-                className="winner-avatar"
-                src={winnerSpecialImage}
+                className={winnerVisual.className}
+                src={winnerVisual.src}
                 alt={winner}
               />
             ) : (
