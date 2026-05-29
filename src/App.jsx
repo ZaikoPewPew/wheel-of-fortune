@@ -55,11 +55,35 @@ const NEFIN_PARTICIPANTS = [
   "Ирина Дуркина",
 ];
 
+const PRODUCTS_PARTICIPANTS = [
+  "Денис",
+  "Ваня",
+  "Виталя",
+  "Макс",
+  "Кирилл",
+  "Лена",
+  "Костя",
+  "Настя",
+];
+
 const TEAMS = [
   { id: "acquiring", label: "Эквайринг", fixed: FIXED_PARTICIPANTS },
   { id: "rko", label: "РКО", fixed: RKO_PARTICIPANTS },
   { id: "nefin", label: "Нефины", fixed: NEFIN_PARTICIPANTS },
+  { id: "products", label: "Продакты", fixed: PRODUCTS_PARTICIPANTS },
 ];
+
+const WHEEL_SIZE = 560;
+
+const VIKA_WINNER_IMAGE =
+  "https://static-cdn.jtvnw.net/jtv_user_pictures/92d2f6bf-fcf8-4fc7-a8e6-5fadc57ca820-profile_image-70x70.png";
+
+function getWinnerSpecialImage(teamId, winnerName) {
+  if (teamId === "acquiring" && winnerName === "Виктория Кистова") {
+    return VIKA_WINNER_IMAGE;
+  }
+  return null;
+}
 
 // ─── localStorage helpers ───────────────────────────────────────────────────
 const LS = {
@@ -235,6 +259,7 @@ export default function WheelOfFortune() {
       acquiring: Object.fromEntries(FIXED_PARTICIPANTS.map((p) => [p, true])),
       rko: Object.fromEntries(RKO_PARTICIPANTS.map((p) => [p, true])),
       nefin: Object.fromEntries(NEFIN_PARTICIPANTS.map((p) => [p, true])),
+      products: Object.fromEntries(PRODUCTS_PARTICIPANTS.map((p) => [p, true])),
     }),
   );
   const [customByTeam, setCustomByTeam] = useState(() =>
@@ -242,6 +267,7 @@ export default function WheelOfFortune() {
       acquiring: [],
       rko: [],
       nefin: [],
+      products: [],
     }),
   );
   const [historyByTeam, setHistoryByTeam] = useState(() =>
@@ -249,6 +275,7 @@ export default function WheelOfFortune() {
       acquiring: [],
       rko: [],
       nefin: [],
+      products: [],
     }),
   );
   const [input, setInput] = useState("");
@@ -258,9 +285,11 @@ export default function WheelOfFortune() {
       acquiring: 0,
       rko: 0,
       nefin: 0,
+      products: 0,
     }),
   );
   const [winner, setWinner] = useState(null);
+  const [winnerTeamId, setWinnerTeamId] = useState(null);
   const [showWinner, setShowWinner] = useState(false);
   const [confettiKey, setConfettiKey] = useState(0);
   const [showConfetti, setShowConfetti] = useState(false);
@@ -319,11 +348,11 @@ export default function WheelOfFortune() {
   const drawWheel = useCallback(
     (ctx, rot) => {
       if (n === 0) return;
-      const cx = 240,
-        cy = 240,
-        r = 220;
+      const cx = WHEEL_SIZE / 2,
+        cy = WHEEL_SIZE / 2,
+        r = WHEEL_SIZE / 2 - 20;
       const slice = (2 * Math.PI) / n;
-      ctx.clearRect(0, 0, 480, 480);
+      ctx.clearRect(0, 0, WHEEL_SIZE, WHEEL_SIZE);
       ctx.save();
       ctx.shadowColor = "rgba(0,0,0,0.4)";
       ctx.shadowBlur = 35;
@@ -355,7 +384,7 @@ export default function WheelOfFortune() {
         ctx.fillStyle = "#fff";
         ctx.shadowColor = "rgba(0,0,0,0.6)";
         ctx.shadowBlur = 4;
-        const fontSize = Math.min(14, Math.max(8, 165 / n));
+        const fontSize = Math.min(16, Math.max(9, 200 / n));
         ctx.font = `bold ${fontSize}px 'Nunito', sans-serif`;
         const name =
           participants[i].length > 17
@@ -389,6 +418,7 @@ export default function WheelOfFortune() {
   const spin = () => {
     if (spinning || n < 2) return;
     setWinner(null);
+    setWinnerTeamId(null);
     setShowWinner(false);
     setShowConfetti(false);
     const totalSpin = 2400 + Math.random() * 1800;
@@ -427,6 +457,7 @@ export default function WheelOfFortune() {
             team: currentTeam.id,
           };
           setWinner(winnerName);
+          setWinnerTeamId(currentTeam.id);
           setShowWinner(true);
           setHistoryByTeam((prev) => ({
             ...prev,
@@ -472,6 +503,13 @@ export default function WheelOfFortune() {
     }
   };
 
+  const closeWinner = () => {
+    setShowWinner(false);
+    setWinnerTeamId(null);
+  };
+
+  const winnerSpecialImage = getWinnerSpecialImage(winnerTeamId, winner);
+
   return (
     <>
       <style>{`
@@ -482,49 +520,117 @@ export default function WheelOfFortune() {
           min-height: 100vh;
           background: radial-gradient(ellipse at 20% 20%, #1a0a2e 0%, #0d0d1a 60%, #00111a 100%);
           display: flex; flex-direction: column; align-items: center;
-          padding: 32px 16px 48px; font-family: 'Nunito', sans-serif;
+          padding: 24px 20px 48px; font-family: 'Nunito', sans-serif;
+        }
+        .app-header {
+          width: 100%; max-width: 1180px; margin-bottom: 32px;
+        }
+        .title {
+          font-family: 'Unbounded', sans-serif;
+          font-size: clamp(1rem, 2.5vw, 1.65rem); font-weight: 900;
+          background: linear-gradient(90deg, #FFE66D, #FF6B6B, #C77DFF, #4D96FF);
+          -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+          background-clip: text; margin: 0; text-align: left; white-space: nowrap;
         }
         .teams-switch {
-          display: flex; gap: 8px; margin-bottom: 20px;
+          display: flex; gap: 4px; width: 100%;
           background: rgba(255,255,255,0.03);
           padding: 4px; border-radius: 999px;
           border: 1px solid rgba(255,255,255,0.08);
         }
         .team-btn {
-          flex: 1; border-radius: 999px; border: none; cursor: pointer;
-          padding: 6px 14px; font-size: 0.78rem; font-weight: 700;
+          flex: 1; min-width: 0;
+          border-radius: 999px; border: none; cursor: pointer;
+          padding: 8px 10px; font-size: 0.74rem; font-weight: 700;
           font-family: 'Nunito', sans-serif;
           color: rgba(255,255,255,0.55); background: transparent;
-          transition: all 0.2s; text-align: center;
+          transition: all 0.2s; text-align: center; white-space: nowrap;
         }
+        .team-btn:hover { color: rgba(255,255,255,0.85); }
         .team-btn.active {
           background: rgba(199,125,255,0.22);
           color: #fff;
           box-shadow: 0 0 18px rgba(199,125,255,0.4);
         }
-        .title {
-          font-family: 'Unbounded', sans-serif;
-          font-size: clamp(1.1rem, 3vw, 1.8rem); font-weight: 900;
-          background: linear-gradient(90deg, #FFE66D, #FF6B6B, #C77DFF, #4D96FF);
-          -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-          margin-bottom: 32px; text-align: center;
-        }
         .main {
-          display: flex; flex-wrap: wrap; gap: 32px;
+          display: flex; flex-wrap: wrap; gap: 40px;
           justify-content: center; align-items: flex-start;
-          width: 100%; max-width: 1100px;
+          width: 100%; max-width: 1180px;
         }
         .wheel-section { display: flex; flex-direction: column; align-items: center; }
         .wheel-wrap {
-          position: relative; width: 480px; height: 480px;
-          filter: drop-shadow(0 0 40px rgba(180,100,255,0.3));
+          position: relative; width: ${WHEEL_SIZE}px; height: ${WHEEL_SIZE}px;
+          filter: drop-shadow(0 0 50px rgba(180,100,255,0.35));
+        }
+        .wheel-wrap::before {
+          content: '';
+          position: absolute; inset: -10px; border-radius: 50%;
+          background: conic-gradient(
+            from 0deg,
+            #FF6B6B, #FFE66D, #6BCB77, #4D96FF, #C77DFF, #F72585, #00F5D4, #FF6B6B
+          );
+          animation: ringRotate 4s linear infinite;
+          z-index: 0;
+        }
+        .wheel-wrap::after {
+          content: '';
+          position: absolute; inset: 6px; border-radius: 50%;
+          background: radial-gradient(circle at 30% 30%, #1a1030 0%, #0d0d1a 70%);
+          z-index: 1;
+        }
+        .wheel-wrap canvas {
+          position: relative; z-index: 2; border-radius: 50%;
+          width: 100% !important; height: 100% !important;
+        }
+        .wheel-wrap:not(.spinning) canvas {
+          animation: wheelIdle 5s ease-in-out infinite;
+        }
+        .wheel-wrap.spinning::before {
+          animation: ringRotate 0.45s linear infinite;
+        }
+        .wheel-wrap.spinning {
+          animation: wheelPulse 0.35s ease-in-out infinite alternate;
+        }
+        @keyframes ringRotate {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        @keyframes wheelIdle {
+          0%, 100% { transform: scale(1) rotate(0deg); }
+          50% { transform: scale(1.012) rotate(0.4deg); }
+        }
+        @keyframes wheelPulse {
+          from { filter: drop-shadow(0 0 35px rgba(180,100,255,0.35)); }
+          to { filter: drop-shadow(0 0 70px rgba(255,107,107,0.65)); }
+        }
+        .wheel-aurora {
+          position: absolute; inset: 20px; border-radius: 50%; z-index: 1;
+          background: radial-gradient(circle, rgba(199,125,255,0.15) 0%, transparent 70%);
+          animation: auroraShift 6s ease-in-out infinite;
+          pointer-events: none;
+        }
+        @keyframes auroraShift {
+          0%, 100% { opacity: 0.5; transform: scale(0.95); }
+          50% { opacity: 1; transform: scale(1.05); }
         }
         .pointer {
-          position: absolute; top: -8px; left: 50%; transform: translateX(-50%);
-          width: 0; height: 0;
-          border-left: 14px solid transparent; border-right: 14px solid transparent;
-          border-top: 36px solid #FFE66D;
-          filter: drop-shadow(0 4px 8px rgba(255,230,109,0.7)); z-index: 10;
+          position: absolute; top: -4px; left: 50%; transform: translateX(-50%);
+          width: 0; height: 0; z-index: 12;
+          border-left: 16px solid transparent; border-right: 16px solid transparent;
+          border-top: 42px solid #FFE66D;
+          filter: drop-shadow(0 4px 12px rgba(255,230,109,0.8));
+          animation: pointerIdle 2s ease-in-out infinite;
+        }
+        .wheel-wrap.spinning .pointer {
+          animation: pointerTick 0.12s ease-in-out infinite;
+        }
+        @keyframes pointerIdle {
+          0%, 100% { transform: translateX(-50%) translateY(0); }
+          50% { transform: translateX(-50%) translateY(3px); }
+        }
+        @keyframes pointerTick {
+          0%, 100% { transform: translateX(-50%) scale(1); }
+          50% { transform: translateX(-50%) scale(1.08) translateY(-2px); }
         }
         .spin-btn {
           margin-top: 28px; padding: 16px 52px;
@@ -540,8 +646,13 @@ export default function WheelOfFortune() {
         .spin-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
         /* Panels */
-        .panels-col { display: flex; flex-direction: column; gap: 16px; width: 300px; }
+        .panels-col {
+          display: flex; flex-direction: column; gap: 16px;
+          width: 360px; flex-shrink: 0;
+        }
+        .panel-block { width: 100%; display: flex; flex-direction: column; gap: 10px; }
         .panel {
+          width: 100%;
           background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
           border-radius: 20px; overflow: hidden; backdrop-filter: blur(12px);
         }
@@ -570,7 +681,10 @@ export default function WheelOfFortune() {
           border-radius: 10px; cursor: pointer; transition: background 0.15s; user-select: none;
         }
         .fixed-item:hover { background: rgba(255,255,255,0.06); }
-        .fixed-item.off { opacity: 0.35; }
+        .fixed-item.off { opacity: 0.45; }
+        .fixed-item.off .fname { color: rgba(255,255,255,0.4); font-weight: 500; }
+        .fixed-item:not(.off) { background: rgba(107,203,119,0.06); }
+        .fixed-item:not(.off) .fname { color: #fff; font-weight: 700; }
         .toggle {
           width: 30px; height: 17px; border-radius: 9px; position: relative;
           transition: background 0.2s; flex-shrink: 0;
@@ -622,7 +736,11 @@ export default function WheelOfFortune() {
         .empty-hint { color: rgba(255,255,255,0.25); font-size: 0.85rem; text-align: center; }
 
         /* History */
-        .history-panel { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; overflow: hidden; }
+        .history-panel {
+          width: 100%;
+          background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+          border-radius: 20px; overflow: hidden;
+        }
         .history-header {
           display: flex; align-items: center; justify-content: space-between;
           padding: 14px 18px 0; margin-bottom: 14px;
@@ -674,6 +792,17 @@ export default function WheelOfFortune() {
         }
         @keyframes popIn { from { transform:scale(0.6);opacity:0 } to { transform:scale(1);opacity:1 } }
         .cry { font-size: 3.5rem; margin-bottom: 12px; display: block; }
+        .winner-avatar {
+          width: 140px; height: 140px; border-radius: 50%; object-fit: cover;
+          margin: 0 auto 16px; display: block;
+          border: 4px solid rgba(255,230,109,0.55);
+          box-shadow: 0 0 40px rgba(199,125,255,0.55);
+          animation: avatarPop 0.6s cubic-bezier(0.175,0.885,0.32,1.275);
+        }
+        @keyframes avatarPop {
+          from { transform: scale(0.4); opacity: 0; }
+          to { transform: scale(1); opacity: 1; }
+        }
         .wlabel {
           font-family: 'Unbounded', sans-serif; font-size: 0.68rem; letter-spacing: 3px;
           text-transform: uppercase; color: rgba(255,160,80,0.7); margin-bottom: 10px;
@@ -693,32 +822,31 @@ export default function WheelOfFortune() {
         }
         .close-btn:hover { background: rgba(255,255,255,0.12); color: #fff; }
 
-        @media (max-width: 560px) {
-          .wheel-wrap { width: 320px; height: 320px; }
-          .wheel-wrap canvas { width: 320px !important; height: 320px !important; }
+        @media (max-width: 900px) {
+          .title { text-align: center; white-space: normal; }
+        }
+        @media (max-width: 620px) {
+          .wheel-wrap { width: min(92vw, 360px); height: min(92vw, 360px); }
+          .team-btn { padding: 6px 10px; font-size: 0.7rem; }
           .panels-col { width: 100%; }
         }
       `}</style>
 
       <div className="app">
-        <h1 className="title">🎡 Колесо Фортуны</h1>
-        <div className="teams-switch">
-          {TEAMS.map((team) => (
-            <button
-              key={team.id}
-              className={`team-btn ${team.id === currentTeam.id ? "active" : ""}`}
-              onClick={() => setActiveTeam(team.id)}
-            >
-              {team.label}
-            </button>
-          ))}
-        </div>
+        <header className="app-header">
+          <h1 className="title">Колесо фортуны</h1>
+        </header>
         <div className="main">
           {/* Wheel */}
           <div className="wheel-section">
-            <div className="wheel-wrap">
+            <div className={`wheel-wrap ${spinning ? "spinning" : ""}`}>
+              <div className="wheel-aurora" aria-hidden />
               <div className="pointer" />
-              <canvas ref={canvasRef} width={480} height={480} />
+              <canvas
+                ref={canvasRef}
+                width={WHEEL_SIZE}
+                height={WHEEL_SIZE}
+              />
             </div>
             <button
               className="spin-btn"
@@ -731,20 +859,31 @@ export default function WheelOfFortune() {
 
           {/* Right column: participants + history */}
           <div className="panels-col">
-            {/* Participants panel */}
-            <div className="panel">
+            <div className="panel-block">
+              <div className="teams-switch">
+                {TEAMS.map((team) => (
+                  <button
+                    key={team.id}
+                    className={`team-btn ${team.id === currentTeam.id ? "active" : ""}`}
+                    onClick={() => setActiveTeam(team.id)}
+                  >
+                    {team.label}
+                  </button>
+                ))}
+              </div>
+              <div className="panel">
               <div className="tabs">
                 <button
                   className={`tab-btn ${activeTab === "default" ? "active" : ""}`}
                   onClick={() => setActiveTab("default")}
                 >
-                  👥 Дефолтные
+                  Дефолтные
                 </button>
                 <button
                   className={`tab-btn ${activeTab === "custom" ? "active" : ""}`}
                   onClick={() => setActiveTab("custom")}
                 >
-                  ✏️ Свои
+                  Свои
                 </button>
               </div>
               <div className="tab-content">
@@ -784,7 +923,7 @@ export default function WheelOfFortune() {
                         return (
                           <div
                             key={p}
-                            className={`fixed-item ${on ? "off" : ""}`}
+                            className={`fixed-item ${on ? "" : "off"}`}
                             onClick={() => toggleFixed(p)}
                           >
                             <div className={`toggle ${on ? "on" : "off"}`} />
@@ -859,11 +998,12 @@ export default function WheelOfFortune() {
                 )}
               </div>
             </div>
+            </div>
 
             {/* History panel */}
             <div className="history-panel">
               <div className="history-header">
-                <div className="history-title">📜 История</div>
+                <div className="history-title">История</div>
                 {history.length > 0 && (
                   <button className="clear-btn" onClick={clearHistory}>
                     очистить
@@ -881,13 +1021,21 @@ export default function WheelOfFortune() {
       {showConfetti && <FunConfetti key={confettiKey} active={showConfetti} />}
 
       {showWinner && winner && (
-        <div className="winner-overlay" onClick={() => setShowWinner(false)}>
+        <div className="winner-overlay" onClick={closeWinner}>
           <div className="winner-card" onClick={(e) => e.stopPropagation()}>
-            <span className="cry">😭</span>
+            {winnerSpecialImage ? (
+              <img
+                className="winner-avatar"
+                src={winnerSpecialImage}
+                alt={winner}
+              />
+            ) : (
+              <span className="cry">😭</span>
+            )}
             <div className="wlabel">Соболезнуем...</div>
             <div className="wname">{winner}</div>
             <div className="wsub">С новым годом 🎄</div>
-            <button className="close-btn" onClick={() => setShowWinner(false)}>
+            <button className="close-btn" onClick={closeWinner}>
               Закрыть
             </button>
           </div>
