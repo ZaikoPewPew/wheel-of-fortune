@@ -1,527 +1,56 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
+import AppHeader from "@/components/AppHeader";
+import HistoryCard from "@/components/HistoryCard";
+import HomePage from "@/components/HomePage";
+import ParticipantsCard from "@/components/ParticipantsCard";
+import Stage from "@/components/Stage";
+import WheelCanvas from "@/components/WheelCanvas";
+import WinnerResult from "@/components/WinnerResult";
+import WorkGroups from "@/components/WorkGroups";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { WORK_GROUPS } from "@/data/workGroups";
+import { APPEAR, appearDelay } from "@/lib/appear";
+import { LS, TODAY, TIME_NOW, easeOut } from "@/lib/storage";
+import {
+  TEAMS,
+  WINNER_MEME_IMAGE,
+  emptyTeamMap,
+  getWinnerVisual,
+  preloadWinnerMeme,
+} from "@/lib/teams";
+import { cn } from "@/lib/utils";
 
-const COLORS = [
-  ["#FF6B6B", "#FF8E8E"],
-  ["#FFE66D", "#FFD93D"],
-  ["#6BCB77", "#4D9E57"],
-  ["#4D96FF", "#2979FF"],
-  ["#FF9A3C", "#FF7700"],
-  ["#C77DFF", "#9B5DE5"],
-  ["#F72585", "#C9184A"],
-  ["#00F5D4", "#00BBF9"],
-  ["#FEE440", "#F15BB5"],
-  ["#00BBF9", "#006494"],
-  ["#FF6B6B", "#FF8E8E"],
-  ["#6BCB77", "#4D9E57"],
-  ["#FFE66D", "#FFD93D"],
-];
-
-const FIXED_PARTICIPANTS = [
-  "Александр Козловский",
-  "Владислав Кургузов",
-  "Виктория Кистова",
-  "Денис Орехов",
-  "Роман Булаткин",
-  "Александра Матвеева",
-  "Алина Сунгатуллина",
-  "Николай Турков",
-  "Алёна Конышева",
-  "Илона Коско",
-];
-
-const RKO_PARTICIPANTS = [
-  "Ваня Недбай",
-  "Вика Кистова",
-  "Таня Жмайло",
-  "Саша Демидов",
-  "Игорь Ефремов",
-  "Макс Завадский",
-  "Оля Копьева",
-  "Настя Роледер",
-  "Тёма Помозов",
-  "Леша Мидиницин",
-  "Катя Радченко",
-  "Ксюша Плаксина",
-  "Ваня Яблоновский",
-];
-
-const NEFIN_PARTICIPANTS = [
-  "Али Аскеров",
-  "Артем Никулкин",
-  "Анна Петроченкова",
-  "Олег Шевнин",
-  "Андрей Шипигузов",
-  "Наталья Родина",
-  "Ирина Дуркина",
-];
-
-const PRODUCTS_PARTICIPANTS = [
-  "Денис",
-  "Ваня",
-  "Виталя",
-  "Макс",
-  "Кирилл",
-  "Лена",
-  "Костя",
-  "Настя",
-];
-
-const TEAMS = [
-  { id: "acquiring", label: "Эквайринг", fixed: FIXED_PARTICIPANTS },
-  { id: "rko", label: "РКО", fixed: RKO_PARTICIPANTS },
-  { id: "nefin", label: "Нефины", fixed: NEFIN_PARTICIPANTS },
-  { id: "products", label: "Продакты", fixed: PRODUCTS_PARTICIPANTS },
-];
-
-const WHEEL_SIZE = 560;
-
-const VIKA_WINNER_IMAGE =
-  "https://static-cdn.jtvnw.net/jtv_user_pictures/92d2f6bf-fcf8-4fc7-a8e6-5fadc57ca820-profile_image-70x70.png";
-
-const WINNER_MEME_IMAGE =
-  "https://images.meme-arsenal.com/a40fe7393d739a369ae2d4bd7e111f4d.jpg";
-
-let winnerMemePreload = null;
-
-function preloadWinnerMeme() {
-  if (winnerMemePreload) return winnerMemePreload;
-  winnerMemePreload = new Promise((resolve, reject) => {
-    const img = new Image();
-    img.decoding = "async";
-    img.onload = () => resolve(img);
-    img.onerror = reject;
-    img.src = WINNER_MEME_IMAGE;
-  });
-  return winnerMemePreload;
-}
-
-preloadWinnerMeme();
-
-const TEAMS_WITH_MEME_WINNER = new Set(["acquiring", "rko", "nefin"]);
-
-function getWinnerVisual(teamId, winnerName) {
-  if (teamId === "products") return null;
-  if (teamId === "acquiring" && winnerName === "Виктория Кистова") {
-    return { src: VIKA_WINNER_IMAGE, className: "winner-avatar" };
-  }
-  if (TEAMS_WITH_MEME_WINNER.has(teamId)) {
-    return { src: WINNER_MEME_IMAGE, className: "winner-meme" };
-  }
-  return null;
-}
-
-// ─── localStorage helpers ───────────────────────────────────────────────────
-const LS = {
-  get: (key, fallback) => {
-    try {
-      const v = localStorage.getItem(key);
-      return v !== null ? JSON.parse(v) : fallback;
-    } catch {
-      return fallback;
-    }
-  },
-  set: (key, val) => {
-    try {
-      localStorage.setItem(key, JSON.stringify(val));
-    } catch {}
-  },
-};
-
-const TODAY = () =>
-  new Date().toLocaleDateString("ru-RU", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-const TIME_NOW = () =>
-  new Date().toLocaleTimeString("ru-RU", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-
-function easeOut(t) {
-  return 1 - Math.pow(1 - t, 4);
-}
-
-// ─── Confetti ────────────────────────────────────────────────────────────────
-function FunConfetti({ active }) {
-  const canvasRef = useRef(null);
-  const animRef = useRef(null);
-  useEffect(() => {
-    if (!active) return;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    const pieces = Array.from({ length: 220 }, (_, i) => {
-      const isEmoji = i < 35;
-      return {
-        x: Math.random() * canvas.width,
-        y: -40 - Math.random() * 200,
-        w: 8 + Math.random() * 10,
-        h: 6 + Math.random() * 6,
-        color: `hsl(${Math.random() * 360},90%,60%)`,
-        vx: (Math.random() - 0.5) * 5,
-        vy: 2 + Math.random() * 5,
-        angle: Math.random() * 360,
-        spin: (Math.random() - 0.5) * 7,
-        opacity: 1,
-        isEmoji,
-        emoji: ["🍑", "🫶", "💖", "✨"][Math.floor(Math.random() * 4)],
-        fontSize: 22 + Math.random() * 18,
-      };
-    });
-    let frame = 0;
-    const draw = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      frame++;
-      pieces.forEach((p) => {
-        p.x += p.vx;
-        p.y += p.vy;
-        p.angle += p.spin;
-        p.vy += 0.07;
-        if (frame > 110) p.opacity -= 0.009;
-        ctx.save();
-        ctx.globalAlpha = Math.max(0, p.opacity);
-        ctx.translate(p.x, p.y);
-        if (p.isEmoji) {
-          ctx.font = `${p.fontSize}px serif`;
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.rotate((p.angle * Math.PI) / 180);
-          ctx.fillText(p.emoji, 0, 0);
-        } else {
-          ctx.rotate((p.angle * Math.PI) / 180);
-          ctx.fillStyle = p.color;
-          ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
-        }
-        ctx.restore();
-      });
-      const alive = pieces.filter(
-        (p) => p.opacity > 0 && p.y < canvas.height + 80,
-      );
-      pieces.length = 0;
-      pieces.push(...alive);
-      if (pieces.length > 0) animRef.current = requestAnimationFrame(draw);
-      else ctx.clearRect(0, 0, canvas.width, canvas.height);
-    };
-    animRef.current = requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(animRef.current);
-  }, [active]);
-  return (
-    <canvas
-      ref={canvasRef}
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        width: "100vw",
-        height: "100vh",
-        pointerEvents: "none",
-        zIndex: 9999,
-      }}
-    />
-  );
-}
-
-// ─── Milk splash (physics burst from winner card) ───────────────────────────
-function MilkSplash({ active, cardRef }) {
-  const canvasRef = useRef(null);
-  const animRef = useRef(null);
-
-  useEffect(() => {
-    if (!active || !cardRef?.current) return;
-
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    let cancelled = false;
-    let onResize = null;
-
-    const resize = () => {
-      canvas.width = window.innerWidth * dpr;
-      canvas.height = window.innerHeight * dpr;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    };
-
-    const startBurst = () => {
-      if (cancelled || !cardRef.current) return;
-
-    resize();
-
-    const rect = cardRef.current.getBoundingClientRect();
-    const ox = rect.left + rect.width / 2;
-    const oy = rect.top + rect.height / 2;
-
-    const particles = [];
-
-    const spawnBurst = (count, opts = {}) => {
-      const {
-        speedMin = 4,
-        speedMax = 20,
-        radiusMin = 2,
-        radiusMax = 12,
-        spread = 1,
-        blobChance = 0.4,
-        mist = false,
-      } = opts;
-      for (let i = 0; i < count; i++) {
-        const angle = Math.random() * Math.PI * 2;
-        const speed = speedMin + Math.random() * (speedMax - speedMin);
-        const isBlob = !mist && Math.random() < blobChance;
-        particles.push({
-          x: ox + (Math.random() - 0.5) * 50 * spread,
-          y: oy + (Math.random() - 0.5) * 40 * spread,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed - 2 - Math.random() * 6,
-          radius: radiusMin + Math.random() * (radiusMax - radiusMin),
-          opacity: mist ? 0.25 + Math.random() * 0.35 : 0.7 + Math.random() * 0.3,
-          life: 1,
-          decay: mist ? 0.004 + Math.random() * 0.006 : 0.0015 + Math.random() * 0.003,
-          stretch: isBlob,
-          mist,
-          wobble: Math.random() * Math.PI * 2,
-        });
-      }
-    };
-
-    spawnBurst(140, { speedMin: 6, speedMax: 22, radiusMax: 16, blobChance: 0.45 });
-    spawnBurst(90, { speedMin: 10, speedMax: 28, radiusMax: 6, blobChance: 0.1, mist: true });
-    spawnBurst(50, { speedMin: 2, speedMax: 10, radiusMin: 8, radiusMax: 22, spread: 0.5, blobChance: 0.9 });
-
-    const rings = [
-      { x: ox, y: oy, r: 8, maxR: 200, opacity: 0.55, lineW: 14 },
-      { x: ox, y: oy, r: 20, maxR: 280, opacity: 0.35, lineW: 6 },
-    ];
-
-    let flash = 1;
-    let frame = 0;
-
-    const draw = () => {
-      const w = window.innerWidth;
-      const h = window.innerHeight;
-      ctx.clearRect(0, 0, w, h);
-      frame++;
-
-      if (flash > 0) {
-        const g = ctx.createRadialGradient(ox, oy, 0, ox, oy, 80 + (1 - flash) * 120);
-        g.addColorStop(0, `rgba(255,255,255,${flash * 0.5})`);
-        g.addColorStop(0.4, `rgba(255,255,255,${flash * 0.15})`);
-        g.addColorStop(1, "rgba(255,255,255,0)");
-        ctx.fillStyle = g;
-        ctx.fillRect(0, 0, w, h);
-        flash -= 0.08;
-      }
-
-      for (let r = rings.length - 1; r >= 0; r--) {
-        const ring = rings[r];
-        ring.r += 7 + frame * 0.02;
-        ring.opacity -= 0.018;
-        if (ring.opacity <= 0 || ring.r > ring.maxR) {
-          rings.splice(r, 1);
-          continue;
-        }
-        ctx.beginPath();
-        ctx.arc(ring.x, ring.y, ring.r, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(255,255,255,${ring.opacity * 0.4})`;
-        ctx.lineWidth = ring.lineW * ring.opacity;
-        ctx.stroke();
-      }
-
-      for (let i = particles.length - 1; i >= 0; i--) {
-        const p = particles[i];
-        p.vy += p.mist ? 0.12 : 0.38;
-        p.vx *= 0.988;
-        p.vy *= 0.988;
-        p.x += p.vx;
-        p.y += p.vy;
-        p.life -= p.decay;
-        p.wobble += 0.12;
-
-        const floor = h - p.radius;
-        if (p.y > floor && p.vy > 0) {
-          p.y = floor;
-          p.vy *= -0.32 - Math.random() * 0.08;
-          p.vx *= 0.65;
-          p.radius *= 0.92;
-        }
-
-        if (p.life <= 0 || p.radius < 0.4) {
-          particles.splice(i, 1);
-          continue;
-        }
-
-        const alpha = p.opacity * p.life;
-        const speed = Math.hypot(p.vx, p.vy);
-        ctx.save();
-        ctx.globalAlpha = alpha;
-        ctx.fillStyle = p.mist
-          ? "rgba(255,255,255,0.85)"
-          : `rgba(${248 + Math.sin(p.wobble) * 4},${248 + Math.cos(p.wobble) * 4},255,0.98)`;
-
-        if (p.stretch && speed > 1) {
-          const ang = Math.atan2(p.vy, p.vx);
-          ctx.translate(p.x, p.y);
-          ctx.rotate(ang);
-          const stretch = 1 + Math.min(speed * 0.1, 3);
-          ctx.beginPath();
-          ctx.ellipse(0, 0, p.radius * stretch, p.radius / (stretch * 0.85), 0, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.shadowColor = "rgba(255,255,255,0.4)";
-          ctx.shadowBlur = 6;
-        } else {
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-          ctx.fill();
-        }
-        ctx.restore();
-      }
-
-      if (particles.length > 0 || rings.length > 0 || flash > 0) {
-        animRef.current = requestAnimationFrame(draw);
-      } else {
-        ctx.clearRect(0, 0, w, h);
-      }
-    };
-
-    onResize = () => resize();
-    window.addEventListener("resize", onResize);
-    animRef.current = requestAnimationFrame(draw);
-    };
-
-    const layoutFrame = requestAnimationFrame(() => {
-      requestAnimationFrame(startBurst);
-    });
-
-    return () => {
-      cancelled = true;
-      cancelAnimationFrame(layoutFrame);
-      if (onResize) window.removeEventListener("resize", onResize);
-      cancelAnimationFrame(animRef.current);
-    };
-  }, [active, cardRef]);
-
-  if (!active) return null;
-
-  return (
-    <canvas
-      ref={canvasRef}
-      aria-hidden
-      style={{
-        position: "fixed",
-        inset: 0,
-        width: "100vw",
-        height: "100vh",
-        pointerEvents: "none",
-        zIndex: 9001,
-      }}
-    />
-  );
-}
-
-// ─── History Panel ───────────────────────────────────────────────────────────
-function HistoryPanel({ history }) {
-  // Group by date
-  const byDate = {};
-  [...history].reverse().forEach((entry) => {
-    if (!byDate[entry.date]) byDate[entry.date] = [];
-    byDate[entry.date].push(entry);
-  });
-  const dates = Object.keys(byDate);
-
-  const labelDate = (d) => {
-    const today = TODAY();
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yStr = yesterday.toLocaleDateString("ru-RU", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
-    if (d === today) return "Сегодня";
-    if (d === yStr) return "Вчера";
-    return d;
-  };
-
-  if (dates.length === 0) {
-    return (
-      <div className="empty-hint" style={{ padding: "24px 0" }}>
-        История пока пуста 🕊️
-      </div>
-    );
-  }
-
-  return (
-    <div className="history-list">
-      {dates.map((date) => (
-        <div key={date} className="history-group">
-          <div className="history-date-label">{labelDate(date)}</div>
-          {byDate[date].map((entry, i) => (
-            <div key={i} className="history-entry">
-              <span className="history-time">{entry.time}</span>
-              <span className="history-name">{entry.winner}</span>
-              <span className="history-sob">😭</span>
-            </div>
-          ))}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ─── Main ────────────────────────────────────────────────────────────────────
 export default function WheelOfFortune() {
+  const [direction, setDirection] = useState("home");
   const [activeTeam, setActiveTeam] = useState(() =>
     LS.get("wof2_activeTeam", "acquiring"),
   );
-  const [fixedEnabledByTeam, setFixedEnabledByTeam] = useState(() =>
-    LS.get("wof2_fixedEnabledByTeam", {
-      acquiring: Object.fromEntries(FIXED_PARTICIPANTS.map((p) => [p, true])),
-      rko: Object.fromEntries(RKO_PARTICIPANTS.map((p) => [p, true])),
-      nefin: Object.fromEntries(NEFIN_PARTICIPANTS.map((p) => [p, true])),
-      products: Object.fromEntries(PRODUCTS_PARTICIPANTS.map((p) => [p, true])),
-    }),
+  const [activeGroupId, setActiveGroupId] = useState(() =>
+    LS.get("wof2_wg_activeGroup", WORK_GROUPS[0].id),
   );
-  const [customByTeam, setCustomByTeam] = useState(() =>
-    LS.get("wof2_customByTeam", {
-      acquiring: [],
-      rko: [],
-      nefin: [],
-      products: [],
-    }),
+  const [fixedEnabledByTeam, setFixedEnabledByTeam] = useState(() =>
+    LS.get(
+      "wof2_fixedEnabledByTeam",
+      emptyTeamMap((list) => Object.fromEntries(list.map((p) => [p, true]))),
+    ),
   );
   const [historyByTeam, setHistoryByTeam] = useState(() =>
-    LS.get("wof2_historyByTeam", {
-      acquiring: [],
-      rko: [],
-      nefin: [],
-      products: [],
-    }),
+    LS.get("wof2_historyByTeam", emptyTeamMap([])),
   );
-  const [input, setInput] = useState("");
   const [spinning, setSpinning] = useState(false);
   const [rotationByTeam, setRotationByTeam] = useState(() =>
-    LS.get("wof2_rotationByTeam", {
-      acquiring: 0,
-      rko: 0,
-      nefin: 0,
-      products: 0,
-    }),
+    LS.get("wof2_rotationByTeam", emptyTeamMap(0)),
   );
   const [winner, setWinner] = useState(null);
   const [winnerTeamId, setWinnerTeamId] = useState(null);
-  const [showWinner, setShowWinner] = useState(false);
-  const [confettiKey, setConfettiKey] = useState(0);
-  const [showConfetti, setShowConfetti] = useState(false);
-  const [activeTab, setActiveTab] = useState("default");
+  const [stage, setStage] = useState("setup");
   const spinRef = useRef(null);
   const startRotation = useRef(0);
-  const canvasRef = useRef(null);
-  const winnerCardRef = useRef(null);
 
   const currentTeam = TEAMS.find((t) => t.id === activeTeam) || TEAMS[0];
   const fixedEnabled = fixedEnabledByTeam[currentTeam.id] || {};
-  const customParticipants = customByTeam[currentTeam.id] || [];
   const history = historyByTeam[currentTeam.id] || [];
   const rotation = rotationByTeam[currentTeam.id] || 0;
 
@@ -529,16 +58,18 @@ export default function WheelOfFortune() {
     preloadWinnerMeme().catch(() => {});
   }, []);
 
-  // Persist state on change
+  useEffect(() => {
+    LS.set("wof2_direction", direction);
+  }, [direction]);
   useEffect(() => {
     LS.set("wof2_activeTeam", activeTeam);
   }, [activeTeam]);
   useEffect(() => {
+    LS.set("wof2_wg_activeGroup", activeGroupId);
+  }, [activeGroupId]);
+  useEffect(() => {
     LS.set("wof2_fixedEnabledByTeam", fixedEnabledByTeam);
   }, [fixedEnabledByTeam]);
-  useEffect(() => {
-    LS.set("wof2_customByTeam", customByTeam);
-  }, [customByTeam]);
   useEffect(() => {
     LS.set("wof2_historyByTeam", historyByTeam);
   }, [historyByTeam]);
@@ -546,15 +77,13 @@ export default function WheelOfFortune() {
     LS.set("wof2_rotationByTeam", rotationByTeam);
   }, [rotationByTeam]);
 
-  // Ensure new fixed participants default to enabled per команды
   useEffect(() => {
     setFixedEnabledByTeam((prev) => {
       const next = { ...prev };
       TEAMS.forEach((team) => {
-        const src = team.fixed;
         const map = { ...(next[team.id] || {}) };
         let changed = false;
-        src.forEach((p) => {
+        team.fixed.forEach((p) => {
           if (!(p in map)) {
             map[p] = true;
             changed = true;
@@ -566,86 +95,44 @@ export default function WheelOfFortune() {
     });
   }, []);
 
-  const activeFixed = currentTeam.fixed.filter((p) => fixedEnabled[p]);
-  const participants = [...activeFixed, ...customParticipants];
+  const resetWheelFlow = () => {
+    if (spinRef.current) cancelAnimationFrame(spinRef.current);
+    setSpinning(false);
+    setWinner(null);
+    setWinnerTeamId(null);
+    setStage("setup");
+  };
+
+  const goHome = () => {
+    resetWheelFlow();
+    setDirection("home");
+  };
+
+  const selectTeam = (id) => {
+    setActiveTeam(id);
+    setDirection("teams");
+    resetWheelFlow();
+  };
+
+  const selectGroup = (id) => {
+    setActiveGroupId(id);
+    setDirection("groups");
+    resetWheelFlow();
+  };
+
+  const selectProducts = () => {
+    setActiveTeam("products");
+    setDirection("other");
+    resetWheelFlow();
+  };
+
+  const participants = currentTeam.fixed.filter((p) => fixedEnabled[p]);
   const n = participants.length;
-
-  const drawWheel = useCallback(
-    (ctx, rot) => {
-      if (n === 0) return;
-      const cx = WHEEL_SIZE / 2,
-        cy = WHEEL_SIZE / 2,
-        r = WHEEL_SIZE / 2 - 20;
-      const slice = (2 * Math.PI) / n;
-      ctx.clearRect(0, 0, WHEEL_SIZE, WHEEL_SIZE);
-      ctx.save();
-      ctx.shadowColor = "rgba(0,0,0,0.4)";
-      ctx.shadowBlur = 35;
-      ctx.beginPath();
-      ctx.arc(cx, cy, r, 0, 2 * Math.PI);
-      ctx.fillStyle = "#111";
-      ctx.fill();
-      ctx.restore();
-      for (let i = 0; i < n; i++) {
-        const start = rot + i * slice,
-          end = start + slice;
-        const [c1, c2] = COLORS[i % COLORS.length];
-        const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-        grad.addColorStop(0, c2);
-        grad.addColorStop(1, c1);
-        ctx.beginPath();
-        ctx.moveTo(cx, cy);
-        ctx.arc(cx, cy, r, start, end);
-        ctx.closePath();
-        ctx.fillStyle = grad;
-        ctx.fill();
-        ctx.strokeStyle = "rgba(255,255,255,0.15)";
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-        ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(start + slice / 2);
-        ctx.textAlign = "right";
-        ctx.fillStyle = "#fff";
-        ctx.shadowColor = "rgba(0,0,0,0.6)";
-        ctx.shadowBlur = 4;
-        const fontSize = Math.min(16, Math.max(9, 200 / n));
-        ctx.font = `bold ${fontSize}px 'Nunito', sans-serif`;
-        const name =
-          participants[i].length > 17
-            ? participants[i].slice(0, 16) + "…"
-            : participants[i];
-        ctx.fillText(name, r - 14, fontSize / 3);
-        ctx.restore();
-      }
-      ctx.beginPath();
-      ctx.arc(cx, cy, 22, 0, 2 * Math.PI);
-      const cg = ctx.createRadialGradient(cx - 5, cy - 5, 2, cx, cy, 22);
-      cg.addColorStop(0, "#fff");
-      cg.addColorStop(1, "#ccc");
-      ctx.fillStyle = cg;
-      ctx.shadowColor = "rgba(0,0,0,0.3)";
-      ctx.shadowBlur = 8;
-      ctx.fill();
-      ctx.strokeStyle = "rgba(0,0,0,0.12)";
-      ctx.lineWidth = 2;
-      ctx.stroke();
-    },
-    [participants, n],
-  );
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    drawWheel(canvas.getContext("2d"), rotation);
-  }, [drawWheel, rotation, currentTeam.id]);
 
   const spin = () => {
     if (spinning || n < 2) return;
     setWinner(null);
     setWinnerTeamId(null);
-    setShowWinner(false);
-    setShowConfetti(false);
     const totalSpin = 2400 + Math.random() * 1800;
     const duration = 4200 + Math.random() * 800;
     const startTime = performance.now();
@@ -683,39 +170,17 @@ export default function WheelOfFortune() {
           };
           setWinner(winnerName);
           setWinnerTeamId(currentTeam.id);
-          setShowWinner(true);
           setHistoryByTeam((prev) => ({
             ...prev,
             [currentTeam.id]: [...(prev[currentTeam.id] || []), entry],
           }));
-          if (currentTeam.id !== "acquiring") {
-            setConfettiKey((k) => k + 1);
-            setShowConfetti(true);
-            setTimeout(() => setShowConfetti(false), 5000);
-          }
+          setStage("result");
         }, 300);
       }
     };
     spinRef.current = requestAnimationFrame(animate);
   };
 
-  const addCustom = () => {
-    const name = input.trim();
-    if (!name || participants.includes(name) || customParticipants.length >= 5)
-      return;
-    setCustomByTeam((prev) => ({
-      ...prev,
-      [currentTeam.id]: [...(prev[currentTeam.id] || []), name],
-    }));
-    setInput("");
-  };
-  const removeCustom = (i) =>
-    setCustomByTeam((prev) => ({
-      ...prev,
-      [currentTeam.id]: (prev[currentTeam.id] || []).filter(
-        (_, idx) => idx !== i,
-      ),
-    }));
   const toggleFixed = (name) =>
     setFixedEnabledByTeam((prev) => ({
       ...prev,
@@ -724,581 +189,140 @@ export default function WheelOfFortune() {
         [name]: !prev[currentTeam.id]?.[name],
       },
     }));
-  const clearHistory = () => {
-    if (confirm("Очистить всю историю для этой команды?")) {
-      setHistoryByTeam((prev) => ({ ...prev, [currentTeam.id]: [] }));
-    }
-  };
 
-  const closeWinner = () => {
-    setShowWinner(false);
-    setWinnerTeamId(null);
+  const clearHistory = () => {
+    setHistoryByTeam((prev) => ({ ...prev, [currentTeam.id]: [] }));
   };
 
   const winnerVisual = getWinnerVisual(winnerTeamId, winner);
 
   return (
-    <>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;900&family=Unbounded:wght@700;900&display=swap');
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background: #0d0d1a; }
-        .winner-meme-preload {
-          position: absolute; width: 0; height: 0; opacity: 0;
-          pointer-events: none; overflow: hidden;
-        }
-        .app {
-          min-height: 100vh;
-          background: radial-gradient(ellipse at 20% 20%, #1a0a2e 0%, #0d0d1a 60%, #00111a 100%);
-          display: flex; flex-direction: column; align-items: center;
-          padding: 24px 20px 48px; font-family: 'Nunito', sans-serif;
-        }
-        .app-header {
-          width: 100%; max-width: 1180px; margin-bottom: 32px;
-        }
-        .title {
-          font-family: 'Unbounded', sans-serif;
-          font-size: clamp(1rem, 2.5vw, 1.65rem); font-weight: 900;
-          background: linear-gradient(90deg, #FFE66D, #FF6B6B, #C77DFF, #4D96FF);
-          -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-          background-clip: text; margin: 0; text-align: left; white-space: nowrap;
-        }
-        .teams-switch {
-          display: flex; gap: 4px; width: 100%;
-          background: rgba(255,255,255,0.03);
-          padding: 4px; border-radius: 999px;
-          border: 1px solid rgba(255,255,255,0.08);
-        }
-        .team-btn {
-          flex: 1; min-width: 0;
-          border-radius: 999px; border: none; cursor: pointer;
-          padding: 8px 10px; font-size: 0.74rem; font-weight: 700;
-          font-family: 'Nunito', sans-serif;
-          color: rgba(255,255,255,0.55); background: transparent;
-          transition: all 0.2s; text-align: center; white-space: nowrap;
-        }
-        .team-btn:hover { color: rgba(255,255,255,0.85); }
-        .team-btn.active {
-          background: rgba(199,125,255,0.22);
-          color: #fff;
-          box-shadow: 0 0 18px rgba(199,125,255,0.4);
-        }
-        .main {
-          display: flex; flex-wrap: wrap; gap: 40px;
-          justify-content: center; align-items: flex-start;
-          width: 100%; max-width: 1180px;
-        }
-        .wheel-section { display: flex; flex-direction: column; align-items: center; }
-        .wheel-wrap {
-          position: relative; width: ${WHEEL_SIZE}px; height: ${WHEEL_SIZE}px;
-          filter: drop-shadow(0 0 50px rgba(180,100,255,0.35));
-        }
-        .wheel-wrap::before {
-          content: '';
-          position: absolute; inset: -10px; border-radius: 50%;
-          background: conic-gradient(
-            from 0deg,
-            #FF6B6B, #FFE66D, #6BCB77, #4D96FF, #C77DFF, #F72585, #00F5D4, #FF6B6B
-          );
-          animation: ringRotate 4s linear infinite;
-          z-index: 0;
-        }
-        .wheel-wrap::after {
-          content: '';
-          position: absolute; inset: 6px; border-radius: 50%;
-          background: radial-gradient(circle at 30% 30%, #1a1030 0%, #0d0d1a 70%);
-          z-index: 1;
-        }
-        .wheel-wrap canvas {
-          position: relative; z-index: 2; border-radius: 50%;
-          width: 100% !important; height: 100% !important;
-        }
-        .wheel-wrap:not(.spinning) canvas {
-          animation: wheelIdle 5s ease-in-out infinite;
-        }
-        .wheel-wrap.spinning::before {
-          animation: ringRotate 0.45s linear infinite;
-        }
-        .wheel-wrap.spinning {
-          animation: wheelPulse 0.35s ease-in-out infinite alternate;
-        }
-        @keyframes ringRotate {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-        @keyframes wheelIdle {
-          0%, 100% { transform: scale(1) rotate(0deg); }
-          50% { transform: scale(1.012) rotate(0.4deg); }
-        }
-        @keyframes wheelPulse {
-          from { filter: drop-shadow(0 0 35px rgba(180,100,255,0.35)); }
-          to { filter: drop-shadow(0 0 70px rgba(255,107,107,0.65)); }
-        }
-        .wheel-aurora {
-          position: absolute; inset: 20px; border-radius: 50%; z-index: 1;
-          background: radial-gradient(circle, rgba(199,125,255,0.15) 0%, transparent 70%);
-          animation: auroraShift 6s ease-in-out infinite;
-          pointer-events: none;
-        }
-        @keyframes auroraShift {
-          0%, 100% { opacity: 0.5; transform: scale(0.95); }
-          50% { opacity: 1; transform: scale(1.05); }
-        }
-        .pointer {
-          position: absolute; top: -4px; left: 50%; transform: translateX(-50%);
-          width: 0; height: 0; z-index: 12;
-          border-left: 16px solid transparent; border-right: 16px solid transparent;
-          border-top: 42px solid #FFE66D;
-          filter: drop-shadow(0 4px 12px rgba(255,230,109,0.8));
-          animation: pointerIdle 2s ease-in-out infinite;
-        }
-        .wheel-wrap.spinning .pointer {
-          animation: pointerTick 0.12s ease-in-out infinite;
-        }
-        @keyframes pointerIdle {
-          0%, 100% { transform: translateX(-50%) translateY(0); }
-          50% { transform: translateX(-50%) translateY(3px); }
-        }
-        @keyframes pointerTick {
-          0%, 100% { transform: translateX(-50%) scale(1); }
-          50% { transform: translateX(-50%) scale(1.08) translateY(-2px); }
-        }
-        .spin-btn {
-          margin-top: 28px; padding: 16px 52px;
-          font-family: 'Unbounded', sans-serif; font-size: 1rem; font-weight: 700;
-          border: none; border-radius: 50px; cursor: pointer;
-          background: linear-gradient(135deg, #FFE66D 0%, #FF6B6B 50%, #C77DFF 100%);
-          color: #1a0a2e; letter-spacing: 0.5px;
-          box-shadow: 0 0 30px rgba(255,107,107,0.4), 0 4px 20px rgba(0,0,0,0.4);
-          transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
-        }
-        .spin-btn:hover:not(:disabled) { transform: scale(1.05); box-shadow: 0 0 50px rgba(255,107,107,0.6),0 6px 28px rgba(0,0,0,0.5); }
-        .spin-btn:active:not(:disabled) { transform: scale(0.97); }
-        .spin-btn:disabled { opacity: 0.45; cursor: not-allowed; }
-
-        /* Panels */
-        .panels-col {
-          display: flex; flex-direction: column; gap: 16px;
-          width: 360px; flex-shrink: 0;
-        }
-        .panel-block { width: 100%; display: flex; flex-direction: column; gap: 10px; }
-        .panel {
-          width: 100%;
-          background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
-          border-radius: 20px; overflow: hidden; backdrop-filter: blur(12px);
-        }
-        .tabs { display: flex; border-bottom: 1px solid rgba(255,255,255,0.08); }
-        .tab-btn {
-          flex: 1; padding: 12px 6px; background: none; border: none; cursor: pointer;
-          font-family: 'Nunito', sans-serif; font-size: 0.72rem; font-weight: 700;
-          color: rgba(255,255,255,0.4); letter-spacing: 0.6px; text-transform: uppercase;
-          transition: all 0.2s; border-bottom: 2px solid transparent;
-        }
-        .tab-btn.active { color: #fff; border-bottom: 2px solid #C77DFF; background: rgba(199,125,255,0.06); }
-        .tab-content { padding: 18px; }
-
-        .select-all-row { display: flex; gap: 8px; margin-bottom: 12px; }
-        .mini-btn {
-          flex: 1; padding: 6px 0; background: rgba(255,255,255,0.06);
-          border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
-          color: rgba(255,255,255,0.55); font-size: 0.73rem; font-weight: 700;
-          font-family: 'Nunito', sans-serif; cursor: pointer; transition: all 0.15s;
-        }
-        .mini-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
-
-        .fixed-list { display: flex; flex-direction: column; gap: 3px; }
-        .fixed-item {
-          display: flex; align-items: center; gap: 9px; padding: 7px 10px;
-          border-radius: 10px; cursor: pointer; transition: background 0.15s; user-select: none;
-        }
-        .fixed-item:hover { background: rgba(255,255,255,0.06); }
-        .fixed-item.off { opacity: 0.45; }
-        .fixed-item.off .fname { color: rgba(255,255,255,0.4); font-weight: 500; }
-        .fixed-item:not(.off) { background: rgba(107,203,119,0.06); }
-        .fixed-item:not(.off) .fname { color: #fff; font-weight: 700; }
-        .toggle {
-          width: 30px; height: 17px; border-radius: 9px; position: relative;
-          transition: background 0.2s; flex-shrink: 0;
-        }
-        .toggle.on { background: linear-gradient(90deg, #6BCB77, #4D9E57); }
-        .toggle.off { background: rgba(255,255,255,0.12); }
-        .toggle::after {
-          content:''; position: absolute; width: 13px; height: 13px;
-          border-radius: 50%; background: #fff; top: 2px; transition: left 0.2s;
-          box-shadow: 0 1px 4px rgba(0,0,0,0.3);
-        }
-        .toggle.on::after { left: 15px; }
-        .toggle.off::after { left: 2px; }
-        .cdot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-        .fname {
-          flex: 1; color: #fff; font-size: 0.82rem; font-weight: 600;
-          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        }
-        .count-hint { font-size: 0.7rem; color: rgba(255,255,255,0.25); text-align: right; margin-top: 10px; }
-
-        .add-row { display: flex; gap: 8px; margin-bottom: 14px; }
-        .add-input {
-          flex: 1; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12);
-          border-radius: 10px; padding: 9px 12px; color: #fff; font-size: 0.88rem;
-          font-family: 'Nunito', sans-serif; outline: none; transition: border-color 0.2s;
-        }
-        .add-input::placeholder { color: rgba(255,255,255,0.3); }
-        .add-input:focus { border-color: rgba(199,125,255,0.5); }
-        .add-btn {
-          background: linear-gradient(135deg, #C77DFF, #4D96FF);
-          border: none; border-radius: 10px; width: 38px; height: 38px;
-          color: #fff; font-size: 1.3rem; cursor: pointer;
-          transition: opacity 0.15s, transform 0.15s;
-          display: flex; align-items: center; justify-content: center;
-        }
-        .add-btn:hover { opacity: 0.85; transform: scale(1.06); }
-        .add-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-        .custom-list { display: flex; flex-direction: column; gap: 6px; }
-        .custom-item {
-          display: flex; align-items: center; gap: 10px;
-          background: rgba(255,255,255,0.05); border-radius: 10px; padding: 8px 12px;
-        }
-        .cname { flex: 1; color: #fff; font-size: 0.88rem; font-weight: 600; }
-        .del-btn {
-          background: none; border: none; color: rgba(255,100,100,0.5); font-size: 1rem;
-          cursor: pointer; padding: 2px 4px; line-height: 1; transition: color 0.15s, transform 0.15s;
-        }
-        .del-btn:hover { color: #FF6B6B; transform: scale(1.2); }
-        .empty-hint { color: rgba(255,255,255,0.25); font-size: 0.85rem; text-align: center; }
-
-        /* History */
-        .history-panel {
-          width: 100%;
-          background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
-          border-radius: 20px; overflow: hidden;
-        }
-        .history-header {
-          display: flex; align-items: center; justify-content: space-between;
-          padding: 14px 18px 0; margin-bottom: 14px;
-        }
-        .history-title {
-          font-family: 'Unbounded', sans-serif; font-size: 0.72rem; font-weight: 700;
-          color: rgba(255,255,255,0.45); letter-spacing: 2px; text-transform: uppercase;
-        }
-        .clear-btn {
-          background: none; border: none; color: rgba(255,100,100,0.4); font-size: 0.72rem;
-          font-family: 'Nunito', sans-serif; cursor: pointer; transition: color 0.15s;
-          font-weight: 700; letter-spacing: 0.5px;
-        }
-        .clear-btn:hover { color: #FF6B6B; }
-        .history-scroll { max-height: 240px; overflow-y: auto; padding: 0 18px 16px; }
-        .history-scroll::-webkit-scrollbar { width: 4px; }
-        .history-scroll::-webkit-scrollbar-track { background: transparent; }
-        .history-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
-        .history-group { margin-bottom: 14px; }
-        .history-date-label {
-          font-family: 'Unbounded', sans-serif; font-size: 0.62rem; font-weight: 700;
-          color: rgba(199,125,255,0.7); letter-spacing: 1.5px; text-transform: uppercase;
-          margin-bottom: 6px; padding-bottom: 4px;
-          border-bottom: 1px solid rgba(199,125,255,0.12);
-        }
-        .history-entry {
-          display: flex; align-items: center; gap: 8px; padding: 6px 8px;
-          border-radius: 8px; transition: background 0.15s;
-        }
-        .history-entry:hover { background: rgba(255,255,255,0.04); }
-        .history-time { color: rgba(255,255,255,0.28); font-size: 0.72rem; font-weight: 600; min-width: 38px; }
-        .history-name { flex: 1; color: rgba(255,255,255,0.85); font-size: 0.84rem; font-weight: 700; }
-        .history-sob { font-size: 0.9rem; }
-
-        /* Winner modal */
-        .winner-overlay {
-          position: fixed; inset: 0; background: rgba(0,0,0,0.72);
-          backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center;
-          z-index: 9000; animation: fadeIn 0.3s ease;
-        }
-        @keyframes fadeIn { from { opacity:0 } to { opacity:1 } }
-        .winner-card {
-          position: relative; z-index: 9002;
-          background: linear-gradient(135deg, #1a0a2e, #0d1a2e);
-          border: 2px solid rgba(255,100,100,0.35); border-radius: 24px;
-          padding: 44px 52px; text-align: center;
-          box-shadow: 0 0 80px rgba(255,80,80,0.2), 0 0 160px rgba(200,50,50,0.1);
-          animation: popIn 0.5s cubic-bezier(0.175,0.885,0.32,1.275);
-          max-width: 420px; width: 90%;
-          overflow: visible;
-        }
-        @keyframes popIn { from { transform:scale(0.6);opacity:0 } to { transform:scale(1);opacity:1 } }
-        .cry { font-size: 3.5rem; margin-bottom: 12px; display: block; }
-        .winner-avatar {
-          width: 140px; height: 140px; border-radius: 50%; object-fit: cover;
-          margin: 0 auto 16px; display: block;
-          border: 4px solid rgba(255,230,109,0.55);
-          box-shadow: 0 0 40px rgba(199,125,255,0.55);
-          animation: avatarPop 0.6s cubic-bezier(0.175,0.885,0.32,1.275);
-        }
-        @keyframes avatarPop {
-          from { transform: scale(0.4); opacity: 0; }
-          to { transform: scale(1); opacity: 1; }
-        }
-        .winner-meme {
-          width: min(200px, 70vw); height: auto; max-height: 180px;
-          margin: 0 auto 16px; display: block; object-fit: contain;
-          border-radius: 14px;
-          border: 2px solid rgba(255,255,255,0.15);
-          box-shadow: 0 0 28px rgba(255,255,255,0.12);
-          animation: avatarPop 0.6s cubic-bezier(0.175,0.885,0.32,1.275);
-        }
-        .wlabel {
-          font-family: 'Unbounded', sans-serif; font-size: 0.68rem; letter-spacing: 3px;
-          text-transform: uppercase; color: rgba(255,160,80,0.7); margin-bottom: 10px;
-        }
-        .wname {
-          font-family: 'Unbounded', sans-serif; font-size: clamp(1.3rem,4vw,2rem); font-weight: 900;
-          background: linear-gradient(90deg, #FF6B6B, #FFE66D);
-          -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-          margin-bottom: 8px; word-break: break-word;
-        }
-        .wsub { color: rgba(255,255,255,0.4); font-size: 0.9rem; margin-bottom: 28px; font-style: italic; }
-        .close-btn {
-          background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.14);
-          border-radius: 12px; padding: 12px 32px; color: rgba(255,255,255,0.65);
-          font-size: 0.9rem; font-family: 'Nunito', sans-serif; font-weight: 700;
-          cursor: pointer; transition: all 0.15s;
-        }
-        .close-btn:hover { background: rgba(255,255,255,0.12); color: #fff; }
-
-        @media (max-width: 900px) {
-          .title { text-align: center; white-space: normal; }
-        }
-        @media (max-width: 620px) {
-          .wheel-wrap { width: min(92vw, 360px); height: min(92vw, 360px); }
-          .team-btn { padding: 6px 10px; font-size: 0.7rem; }
-          .panels-col { width: 100%; }
-        }
-      `}</style>
-
+    <div className="flex min-h-svh flex-col bg-background">
       <img
         src={WINNER_MEME_IMAGE}
         alt=""
         aria-hidden
-        className="winner-meme-preload"
+        className="pointer-events-none absolute size-0 overflow-hidden opacity-0"
         fetchPriority="high"
       />
 
-      <div className="app">
-        <header className="app-header">
-          <h1 className="title">Колесо фортуны</h1>
-        </header>
-        <div className="main">
-          {/* Wheel */}
-          <div className="wheel-section">
-            <div className={`wheel-wrap ${spinning ? "spinning" : ""}`}>
-              <div className="wheel-aurora" aria-hidden />
-              <div className="pointer" />
-              <canvas
-                ref={canvasRef}
-                width={WHEEL_SIZE}
-                height={WHEEL_SIZE}
-              />
+      <AppHeader
+        direction={direction}
+        activeTeam={activeTeam}
+        activeGroupId={activeGroupId}
+        onGoHome={goHome}
+        onSelectTeam={selectTeam}
+        onSelectGroup={selectGroup}
+        onSelectProducts={selectProducts}
+      />
+
+      <main className="flex flex-1 flex-col items-center justify-center px-5 pt-20 pb-12">
+        {direction === "home" ? (
+          <HomePage />
+        ) : direction === "groups" ? (
+          <WorkGroups groupId={activeGroupId} />
+        ) : stage === "setup" ? (
+          <Stage key={`${activeTeam}-setup`}>
+            <div
+              className={cn(
+                "mb-3 flex items-center justify-between gap-3 px-1",
+                APPEAR,
+              )}
+              style={appearDelay(0)}
+            >
+              <p className="min-w-0 truncate text-sm text-muted-foreground">
+                {currentTeam.label}
+              </p>
+              <Badge className="border-transparent bg-sky-500/15 text-sky-700 dark:text-sky-400">
+                {n} из {currentTeam.fixed.length}
+              </Badge>
             </div>
-            <button
-              className="spin-btn"
+            <ParticipantsCard
+              currentTeam={currentTeam}
+              fixedEnabled={fixedEnabled}
+              onToggleFixed={toggleFixed}
+            />
+            <Button
+              type="button"
+              size="lg"
+              className={cn("mt-3 h-11 w-full", APPEAR)}
+              style={appearDelay(currentTeam.fixed.length, { base: 45 })}
+              onClick={() => setStage("spin")}
+              disabled={n < 2}
+            >
+              К колесу
+              <ArrowRight />
+            </Button>
+            {n < 2 && (
+              <p
+                className={cn(
+                  "mt-2 text-center text-xs text-muted-foreground",
+                  APPEAR,
+                )}
+              >
+                Нужно минимум двое участников
+              </p>
+            )}
+          </Stage>
+        ) : stage === "spin" ? (
+          <Stage key={`${activeTeam}-spin`} wide>
+            <div
+              className={cn(
+                "relative mb-4 flex w-full items-center justify-center self-stretch",
+                APPEAR,
+              )}
+              style={appearDelay(0)}
+            >
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="absolute left-0"
+                onClick={() => setStage("setup")}
+                disabled={spinning}
+              >
+                <ArrowLeft />
+                Состав
+              </Button>
+              <p className="text-sm font-medium">{currentTeam.label}</p>
+            </div>
+            <WheelCanvas participants={participants} rotation={rotation} />
+            <Button
+              type="button"
+              size="lg"
+              className={cn(
+                "mt-7 h-11 px-8 text-base motion-reduce:transition-none",
+                APPEAR,
+              )}
+              style={appearDelay(2)}
               onClick={spin}
               disabled={spinning || n < 2}
             >
-              {spinning ? "Крутится... 🌀" : "🎲 КРУТИТЬКИ!"}
-            </button>
-          </div>
-
-          {/* Right column: participants + history */}
-          <div className="panels-col">
-            <div className="panel-block">
-              <div className="teams-switch">
-                {TEAMS.map((team) => (
-                  <button
-                    key={team.id}
-                    className={`team-btn ${team.id === currentTeam.id ? "active" : ""}`}
-                    onClick={() => setActiveTeam(team.id)}
-                  >
-                    {team.label}
-                  </button>
-                ))}
-              </div>
-              <div className="panel">
-              <div className="tabs">
-                <button
-                  className={`tab-btn ${activeTab === "default" ? "active" : ""}`}
-                  onClick={() => setActiveTab("default")}
-                >
-                  Дефолтные
-                </button>
-                <button
-                  className={`tab-btn ${activeTab === "custom" ? "active" : ""}`}
-                  onClick={() => setActiveTab("custom")}
-                >
-                  Свои
-                </button>
-              </div>
-              <div className="tab-content">
-                {activeTab === "default" && (
-                  <>
-                    <div className="select-all-row">
-                      <button
-                        className="mini-btn"
-                        onClick={() =>
-                          setFixedEnabledByTeam((prev) => ({
-                            ...prev,
-                            [currentTeam.id]: Object.fromEntries(
-                              currentTeam.fixed.map((p) => [p, true]),
-                            ),
-                          }))
-                        }
-                      >
-                        Все вкл
-                      </button>
-                      <button
-                        className="mini-btn"
-                        onClick={() =>
-                          setFixedEnabledByTeam((prev) => ({
-                            ...prev,
-                            [currentTeam.id]: Object.fromEntries(
-                              currentTeam.fixed.map((p) => [p, false]),
-                            ),
-                          }))
-                        }
-                      >
-                        Все выкл
-                      </button>
-                    </div>
-                    <div className="fixed-list">
-                      {currentTeam.fixed.map((p, i) => {
-                        const on = fixedEnabled[p];
-                        return (
-                          <div
-                            key={p}
-                            className={`fixed-item ${on ? "" : "off"}`}
-                            onClick={() => toggleFixed(p)}
-                          >
-                            <div className={`toggle ${on ? "on" : "off"}`} />
-                            <div
-                              className="cdot"
-                              style={{
-                                background: on
-                                  ? COLORS[i % COLORS.length][0]
-                                  : "rgba(255,255,255,0.18)",
-                              }}
-                            />
-                            <span className="fname">{p}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <div className="count-hint">
-                      {activeFixed.length} / {currentTeam.fixed.length} активны
-                    </div>
-                  </>
-                )}
-                {activeTab === "custom" && (
-                  <>
-                    <div className="add-row">
-                      <input
-                        className="add-input"
-                        placeholder="Имя участника..."
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && addCustom()}
-                        maxLength={20}
-                      />
-                      <button
-                        className="add-btn"
-                        onClick={addCustom}
-                        disabled={
-                          !input.trim() || customParticipants.length >= 5
-                        }
-                      >
-                        +
-                      </button>
-                    </div>
-                    <div className="custom-list">
-                      {customParticipants.length === 0 && (
-                        <div className="empty-hint">Нет своих участников</div>
-                      )}
-                      {customParticipants.map((p, i) => (
-                        <div className="custom-item" key={p}>
-                          <div
-                            className="cdot"
-                            style={{
-                              background:
-                                COLORS[
-                                  (activeFixed.length + i) % COLORS.length
-                                ][0],
-                            }}
-                          />
-                          <span className="cname">{p}</span>
-                          <button
-                            className="del-btn"
-                            onClick={() => removeCustom(i)}
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="count-hint">
-                      {customParticipants.length} / 5 участников
-                    </div>
-                  </>
-                )}
-              </div>
+              {spinning ? "Крутится…" : "Крутить"}
+            </Button>
+          </Stage>
+        ) : (
+          <Stage key={`${activeTeam}-result`}>
+            <WinnerResult
+              winner={winner}
+              visual={winnerVisual}
+              onAgain={() => {
+                setWinner(null);
+                setWinnerTeamId(null);
+                setStage("spin");
+              }}
+              onEdit={() => {
+                setWinner(null);
+                setWinnerTeamId(null);
+                setStage("setup");
+              }}
+            />
+            <div className={cn("mt-6 w-full", APPEAR)} style={appearDelay(4)}>
+              <HistoryCard history={history} onClear={clearHistory} />
             </div>
-            </div>
-
-            {/* History panel */}
-            <div className="history-panel">
-              <div className="history-header">
-                <div className="history-title">История</div>
-                {history.length > 0 && (
-                  <button className="clear-btn" onClick={clearHistory}>
-                    очистить
-                  </button>
-                )}
-              </div>
-              <div className="history-scroll">
-                <HistoryPanel history={history} />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {showConfetti && <FunConfetti key={confettiKey} active={showConfetti} />}
-
-      {showWinner && winner && (
-        <div className="winner-overlay" onClick={closeWinner}>
-          <MilkSplash
-            key={confettiKey}
-            active={showWinner}
-            cardRef={winnerCardRef}
-          />
-          <div
-            ref={winnerCardRef}
-            className="winner-card"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {winnerVisual ? (
-              <img
-                className={winnerVisual.className}
-                src={winnerVisual.src}
-                alt={winner}
-              />
-            ) : (
-              <span className="cry">😭</span>
-            )}
-            <div className="wlabel">Соболезнуем...</div>
-            <div className="wname">{winner}</div>
-            <div className="wsub">С новым годом 🎄</div>
-            <button className="close-btn" onClick={closeWinner}>
-              Закрыть
-            </button>
-          </div>
-        </div>
-      )}
-    </>
+          </Stage>
+        )}
+      </main>
+    </div>
   );
 }
