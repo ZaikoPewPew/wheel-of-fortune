@@ -268,7 +268,7 @@ export default function WheelOfFortune() {
           <Stage key={`${activeTeam}-spin`} wide>
             <div
               className={cn(
-                "relative mb-4 flex w-full items-center justify-center self-stretch",
+                "mb-4 flex w-full items-center justify-between gap-2 self-stretch",
                 APPEAR,
               )}
               style={appearDelay(0)}
@@ -277,14 +277,15 @@ export default function WheelOfFortune() {
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="absolute left-0"
                 onClick={() => setStage("setup")}
                 disabled={spinning}
               >
                 <ArrowLeft />
                 Состав
               </Button>
-              <p className="text-sm font-medium">{currentTeam.label}</p>
+              <p className="min-w-0 truncate text-sm font-medium">
+                {currentTeam.label}
+              </p>
             </div>
             <WheelCanvas participants={participants} rotation={rotation} />
             <Button

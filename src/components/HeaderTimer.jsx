@@ -53,7 +53,7 @@ function TimeReadout({ ms, className }) {
   );
 }
 
-export default function HeaderTimer() {
+export default function HeaderTimer({ compact = false }) {
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState("idle");
   const [durationMs, setDurationMs] = useState(DEFAULT_SEC * 1000);
@@ -120,10 +120,12 @@ export default function HeaderTimer() {
         <Button
           type="button"
           variant={status === "finished" ? "destructive" : "outline"}
-          size="sm"
-          aria-label="Таймер"
+          size={compact ? "icon" : "sm"}
+          aria-label={`Таймер ${formatTime(displayMs)}`}
           className={cn(
-            "h-8 gap-1.5 px-2.5 font-medium tabular-nums",
+            compact
+              ? "h-8 w-8"
+              : "h-8 w-8 gap-0 px-0 font-medium tabular-nums md:w-auto md:gap-1.5 md:px-2.5",
             status === "finished"
               ? "bg-destructive text-white hover:bg-destructive dark:bg-destructive dark:text-white dark:hover:bg-destructive"
               : "bg-background hover:bg-muted dark:bg-background dark:hover:bg-muted aria-expanded:bg-muted",
@@ -131,7 +133,9 @@ export default function HeaderTimer() {
           )}
         >
           <Timer />
-          <TimeReadout ms={displayMs} />
+          {!compact && (
+            <TimeReadout className="hidden md:inline-block" ms={displayMs} />
+          )}
         </Button>
       </DialogTrigger>
       <DialogContent>
