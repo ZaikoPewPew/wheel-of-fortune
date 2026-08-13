@@ -1,3 +1,4 @@
+import { useRef, useState } from "react";
 import {
   Menubar,
   MenubarContent,
@@ -14,6 +15,8 @@ import { APPEAR, appearDelay } from "@/lib/appear";
 import { TEAM_SYNC_TEAMS } from "@/lib/teams";
 import { cn } from "@/lib/utils";
 
+const MENU_CLOSE_DELAY = 120;
+
 export default function AppHeader({
   direction,
   activeTeam,
@@ -23,6 +26,19 @@ export default function AppHeader({
   onSelectGroup,
   onSelectProducts,
 }) {
+  const [openMenu, setOpenMenu] = useState("");
+  const closeTimer = useRef(null);
+
+  const open = (value) => {
+    clearTimeout(closeTimer.current);
+    setOpenMenu(value);
+  };
+
+  const scheduleClose = () => {
+    clearTimeout(closeTimer.current);
+    closeTimer.current = setTimeout(() => setOpenMenu(""), MENU_CLOSE_DELAY);
+  };
+
   return (
     <header className="fixed inset-x-0 top-0 z-50 border-b bg-background">
       <div className="mx-auto flex h-14 w-full max-w-[1180px] items-center justify-between px-5">
@@ -49,15 +65,21 @@ export default function AppHeader({
           <span className={APPEAR} style={appearDelay(1)}>
             <HeaderTimer />
           </span>
-          <Menubar>
-            <MenubarMenu>
+          <Menubar value={openMenu} onValueChange={setOpenMenu} modal={false}>
+            <MenubarMenu value="teams">
               <MenubarTrigger
                 className={cn(direction === "teams" && "bg-muted", APPEAR)}
                 style={appearDelay(2)}
+                onPointerEnter={() => open("teams")}
+                onPointerLeave={scheduleClose}
               >
                 Синки команд
               </MenubarTrigger>
-              <MenubarContent align="end">
+              <MenubarContent
+                align="end"
+                onPointerEnter={() => open("teams")}
+                onPointerLeave={scheduleClose}
+              >
                 <MenubarRadioGroup
                   value={direction === "teams" ? activeTeam : ""}
                 >
@@ -75,14 +97,20 @@ export default function AppHeader({
                 </MenubarRadioGroup>
               </MenubarContent>
             </MenubarMenu>
-            <MenubarMenu>
+            <MenubarMenu value="groups">
               <MenubarTrigger
                 className={cn(direction === "groups" && "bg-muted", APPEAR)}
                 style={appearDelay(3)}
+                onPointerEnter={() => open("groups")}
+                onPointerLeave={scheduleClose}
               >
                 Синки РГ
               </MenubarTrigger>
-              <MenubarContent align="end">
+              <MenubarContent
+                align="end"
+                onPointerEnter={() => open("groups")}
+                onPointerLeave={scheduleClose}
+              >
                 <MenubarRadioGroup
                   value={direction === "groups" ? activeGroupId : ""}
                 >
@@ -100,11 +128,12 @@ export default function AppHeader({
                 </MenubarRadioGroup>
               </MenubarContent>
             </MenubarMenu>
-            <MenubarMenu>
+            <MenubarMenu value="products">
               <MenubarTrigger
                 className={cn(direction === "other" && "bg-muted", APPEAR)}
                 style={appearDelay(4)}
                 onClick={onSelectProducts}
+                onPointerEnter={scheduleClose}
               >
                 Синки продактов
               </MenubarTrigger>

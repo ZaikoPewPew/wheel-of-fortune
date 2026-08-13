@@ -185,6 +185,8 @@ function ShuffleDeck({ members }) {
 }
 
 function OrderSlot({ slot, index, animate, done, onToggleDone }) {
+  const [entered, setEntered] = useState(!animate);
+
   return (
     <li
       className={cn(
@@ -194,9 +196,10 @@ function OrderSlot({ slot, index, animate, done, onToggleDone }) {
           : slot.critical
             ? "bg-orange-500/18 ring-orange-500/35"
             : "bg-card ring-foreground/10 hover:bg-muted/40",
-        animate && APPEAR,
+        animate && !entered && APPEAR,
       )}
-      style={animate ? appearDelay(index, { base: 45 }) : undefined}
+      style={animate && !entered ? appearDelay(index, { base: 45 }) : undefined}
+      onAnimationEnd={() => setEntered(true)}
       onClick={onToggleDone}
     >
       <span
@@ -218,15 +221,10 @@ function OrderSlot({ slot, index, animate, done, onToggleDone }) {
         </div>
       </div>
       {done ? (
-        <Check className={cn("size-3.5 shrink-0 text-emerald-500", APPEAR)} />
+        <Check className="size-3.5 shrink-0 text-emerald-500" />
       ) : (
         slot.critical && (
-          <Flame
-            className={cn(
-              "size-3.5 shrink-0 fill-current text-orange-500",
-              APPEAR,
-            )}
-          />
+          <Flame className="size-3.5 shrink-0 fill-current text-orange-500" />
         )
       )}
     </li>
