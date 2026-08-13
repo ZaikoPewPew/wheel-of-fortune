@@ -162,7 +162,7 @@ export default function AppHeader({
             alt=""
             width={24}
             height={24}
-            className="size-6"
+            className="size-6 rounded-full bg-black"
           />
           Эчпочмарик
         </button>

@@ -216,9 +216,20 @@ export default function WheelOfFortune() {
         onSelectProducts={selectProducts}
       />
 
-      <main className="flex flex-1 flex-col items-center justify-center px-5 pt-20 pb-12">
+      <main
+        className={cn(
+          "flex flex-1 flex-col items-center px-5",
+          direction === "home"
+            ? "justify-start pt-24 pb-16 sm:pt-28"
+            : "justify-center pt-20 pb-12",
+        )}
+      >
         {direction === "home" ? (
-          <HomePage />
+          <HomePage
+            onSelectTeam={selectTeam}
+            onSelectGroup={selectGroup}
+            onSelectProducts={selectProducts}
+          />
         ) : direction === "groups" ? (
           <WorkGroups groupId={activeGroupId} />
         ) : stage === "setup" ? (
