@@ -38,6 +38,7 @@ export const RKO_PARTICIPANTS = [
   "Катя Радченко",
   "Ксюша Плаксина",
   "Ваня Яблоновский",
+  "Лена Вилкова",
 ];
 
 export const NEFIN_PARTICIPANTS = [
