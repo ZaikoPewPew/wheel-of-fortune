@@ -10,8 +10,8 @@ import WinnerResult from "@/components/WinnerResult";
 import WorkGroups from "@/components/WorkGroups";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { WORK_GROUPS } from "@/data/workGroups";
 import { APPEAR, appearDelay } from "@/lib/appear";
+import { useRoute } from "@/lib/routes";
 import { LS, TODAY, TIME_NOW, easeOut } from "@/lib/storage";
 import {
   TEAMS,
@@ -23,13 +23,11 @@ import {
 import { cn } from "@/lib/utils";
 
 export default function WheelOfFortune() {
-  const [direction, setDirection] = useState("home");
-  const [activeTeam, setActiveTeam] = useState(() =>
-    LS.get("wof2_activeTeam", "acquiring"),
-  );
-  const [activeGroupId, setActiveGroupId] = useState(() =>
-    LS.get("wof2_wg_activeGroup", WORK_GROUPS[0].id),
-  );
+  const route = useRoute();
+  const direction = route.page;
+  const activeTeam =
+    route.page === "products" ? "products" : route.teamId || "acquiring";
+  const activeGroupId = route.groupId;
   const [fixedEnabledByTeam, setFixedEnabledByTeam] = useState(() =>
     LS.get(
       "wof2_fixedEnabledByTeam",
@@ -59,14 +57,13 @@ export default function WheelOfFortune() {
   }, []);
 
   useEffect(() => {
-    LS.set("wof2_direction", direction);
-  }, [direction]);
+    if (route.page === "teams") LS.set("wof2_activeTeam", activeTeam);
+  }, [route.page, activeTeam]);
   useEffect(() => {
-    LS.set("wof2_activeTeam", activeTeam);
-  }, [activeTeam]);
-  useEffect(() => {
-    LS.set("wof2_wg_activeGroup", activeGroupId);
-  }, [activeGroupId]);
+    if (route.page === "groups" && activeGroupId) {
+      LS.set("wof2_wg_activeGroup", activeGroupId);
+    }
+  }, [route.page, activeGroupId]);
   useEffect(() => {
     LS.set("wof2_fixedEnabledByTeam", fixedEnabledByTeam);
   }, [fixedEnabledByTeam]);
@@ -95,36 +92,13 @@ export default function WheelOfFortune() {
     });
   }, []);
 
-  const resetWheelFlow = () => {
+  useEffect(() => {
     if (spinRef.current) cancelAnimationFrame(spinRef.current);
     setSpinning(false);
     setWinner(null);
     setWinnerTeamId(null);
     setStage("setup");
-  };
-
-  const goHome = () => {
-    resetWheelFlow();
-    setDirection("home");
-  };
-
-  const selectTeam = (id) => {
-    setActiveTeam(id);
-    setDirection("teams");
-    resetWheelFlow();
-  };
-
-  const selectGroup = (id) => {
-    setActiveGroupId(id);
-    setDirection("groups");
-    resetWheelFlow();
-  };
-
-  const selectProducts = () => {
-    setActiveTeam("products");
-    setDirection("other");
-    resetWheelFlow();
-  };
+  }, [route.page, route.teamId, route.groupId]);
 
   const participants = currentTeam.fixed.filter((p) => fixedEnabled[p]);
   const n = participants.length;
@@ -210,10 +184,6 @@ export default function WheelOfFortune() {
         direction={direction}
         activeTeam={activeTeam}
         activeGroupId={activeGroupId}
-        onGoHome={goHome}
-        onSelectTeam={selectTeam}
-        onSelectGroup={selectGroup}
-        onSelectProducts={selectProducts}
       />
 
       <main
@@ -225,11 +195,7 @@ export default function WheelOfFortune() {
         )}
       >
         {direction === "home" ? (
-          <HomePage
-            onSelectTeam={selectTeam}
-            onSelectGroup={selectGroup}
-            onSelectProducts={selectProducts}
-          />
+          <HomePage />
         ) : direction === "groups" ? (
           <WorkGroups groupId={activeGroupId} />
         ) : stage === "setup" ? (

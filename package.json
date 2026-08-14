@@ -2,7 +2,7 @@
   "name": "wheel-of-fortune",
   "version": "1.0.0",
   "private": true,
-  "homepage": ".",
+  "homepage": "https://zaikopewpew.github.io/wheel-of-fortune/",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

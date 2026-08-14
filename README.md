@@ -60,6 +60,17 @@ git push origin main
 
 Через 1–2 минуты обновится: [https://zaikopewpew.github.io/wheel-of-fortune/](https://zaikopewpew.github.io/wheel-of-fortune/)
 
+### Ссылки на фичи
+
+| Страница | Адрес |
+|----------|--------|
+| Главная | [/](https://zaikopewpew.github.io/wheel-of-fortune/) |
+| Эквайринг | [/teams/acquiring](https://zaikopewpew.github.io/wheel-of-fortune/teams/acquiring) |
+| РКО | [/teams/rko](https://zaikopewpew.github.io/wheel-of-fortune/teams/rko) |
+| Нефины | [/teams/nefin](https://zaikopewpew.github.io/wheel-of-fortune/teams/nefin) |
+| Синки РГ | [/groups/pyureshki](https://zaikopewpew.github.io/wheel-of-fortune/groups/pyureshki) и другие группы |
+| Продакты | [/products](https://zaikopewpew.github.io/wheel-of-fortune/products) |
+
 Статус: **Actions** → **Deploy to GitHub Pages**.
 
 Ручной деплой: **Actions** → **Deploy to GitHub Pages** → **Run workflow**.

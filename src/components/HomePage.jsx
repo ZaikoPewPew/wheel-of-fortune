@@ -1,4 +1,5 @@
 import { ArrowRight, ArrowUpRight, Briefcase, Dices, Users } from "lucide-react";
+import Link from "@/components/Link";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -9,12 +10,14 @@ import {
 import echpochmarik from "@/assets/echpochmarik.png";
 import { WORK_GROUPS } from "@/data/workGroups";
 import { APPEAR, appearDelay } from "@/lib/appear";
+import { paths } from "@/lib/routes";
 import { TEAM_SYNC_TEAMS } from "@/lib/teams";
 import { cn } from "@/lib/utils";
 
 const SECTIONS = [
   {
     id: "teams",
+    to: paths.team(TEAM_SYNC_TEAMS[0].id),
     icon: Dices,
     title: "Синки команд",
     description:
@@ -23,6 +26,7 @@ const SECTIONS = [
   },
   {
     id: "groups",
+    to: paths.group(WORK_GROUPS[0].id),
     icon: Users,
     title: "Синки РГ",
     description:
@@ -31,6 +35,7 @@ const SECTIONS = [
   },
   {
     id: "products",
+    to: paths.products,
     icon: Briefcase,
     title: "Синки продактов",
     description: "Тот же ритуал, но со своим составом.",
@@ -38,17 +43,7 @@ const SECTIONS = [
   },
 ];
 
-export default function HomePage({
-  onSelectTeam,
-  onSelectGroup,
-  onSelectProducts,
-}) {
-  const openSection = (id) => {
-    if (id === "teams") onSelectTeam(TEAM_SYNC_TEAMS[0].id);
-    else if (id === "groups") onSelectGroup(WORK_GROUPS[0].id);
-    else onSelectProducts();
-  };
-
+export default function HomePage() {
   return (
     <div className="flex w-full max-w-[860px] flex-col items-center">
       <section
@@ -70,12 +65,14 @@ export default function HomePage({
           выступлений.
         </p>
         <div className="mt-7 flex flex-wrap items-center justify-center gap-2">
-          <Button onClick={() => openSection("teams")}>
-            Синки команд
-            <ArrowRight />
+          <Button asChild>
+            <Link to={paths.team(TEAM_SYNC_TEAMS[0].id)}>
+              Синки команд
+              <ArrowRight />
+            </Link>
           </Button>
-          <Button variant="outline" onClick={() => openSection("groups")}>
-            Синки РГ
+          <Button variant="outline" asChild>
+            <Link to={paths.group(WORK_GROUPS[0].id)}>Синки РГ</Link>
           </Button>
         </div>
       </section>
@@ -84,41 +81,83 @@ export default function HomePage({
         {SECTIONS.map((section, i) => {
           const Icon = section.icon;
           return (
-            <Card
+            <Link
               key={section.id}
-              role="button"
-              tabIndex={0}
-              onClick={() => openSection(section.id)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  openSection(section.id);
-                }
-              }}
-              className={cn(
-                "cursor-pointer py-5 transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring/50",
-                APPEAR,
-              )}
+              to={section.to}
+              className={cn("block rounded-xl", APPEAR)}
               style={appearDelay(i + 1)}
             >
-              <CardHeader className="gap-3">
-                <div className="flex size-8 items-center justify-center rounded-lg bg-muted text-foreground">
-                  <Icon className="size-4" />
-                </div>
-                <div className="flex items-start justify-between gap-2">
-                  <CardTitle className="text-[15px]">{section.title}</CardTitle>
-                  <ArrowUpRight className="size-4 shrink-0 text-muted-foreground" />
-                </div>
-                <CardDescription className="text-sm leading-relaxed">
-                  {section.description}
-                </CardDescription>
-                <p className="pt-1 text-xs text-muted-foreground">
-                  {section.meta}
-                </p>
-              </CardHeader>
-            </Card>
+              <Card className="h-full py-5 transition-colors hover:bg-muted/50">
+                <CardHeader className="gap-3">
+                  <div className="flex size-8 items-center justify-center rounded-lg bg-muted text-foreground">
+                    <Icon className="size-4" />
+                  </div>
+                  <div className="flex items-start justify-between gap-2">
+                    <CardTitle className="text-[15px]">{section.title}</CardTitle>
+                    <ArrowUpRight className="size-4 shrink-0 text-muted-foreground" />
+                  </div>
+                  <CardDescription className="text-sm leading-relaxed">
+                    {section.description}
+                  </CardDescription>
+                  <p className="pt-1 text-xs text-muted-foreground">
+                    {section.meta}
+                  </p>
+                </CardHeader>
+              </Card>
+            </Link>
           );
         })}
+      </section>
+
+      <section className="mt-10 grid w-full gap-8 sm:mt-12 sm:grid-cols-3">
+        <div className={cn("flex flex-col gap-1", APPEAR)} style={appearDelay(4)}>
+          <h2 className="px-1 text-xs font-medium text-muted-foreground">
+            Синки команд
+          </h2>
+          {TEAM_SYNC_TEAMS.map((team) => (
+            <Link
+              key={team.id}
+              to={paths.team(team.id)}
+              className="flex items-center justify-between gap-3 rounded-md px-1 py-1.5 text-sm hover:bg-muted"
+            >
+              <span>{team.label}</span>
+              <span className="font-mono text-xs text-muted-foreground">
+                /teams/{team.id}
+              </span>
+            </Link>
+          ))}
+        </div>
+        <div className={cn("flex flex-col gap-1", APPEAR)} style={appearDelay(5)}>
+          <h2 className="px-1 text-xs font-medium text-muted-foreground">
+            Синки РГ
+          </h2>
+          {WORK_GROUPS.map((group) => (
+            <Link
+              key={group.id}
+              to={paths.group(group.id)}
+              className="flex items-center justify-between gap-3 rounded-md px-1 py-1.5 text-sm hover:bg-muted"
+            >
+              <span className="min-w-0 truncate">{group.name}</span>
+              <span className="shrink-0 font-mono text-xs text-muted-foreground">
+                /groups/{group.id}
+              </span>
+            </Link>
+          ))}
+        </div>
+        <div className={cn("flex flex-col gap-1", APPEAR)} style={appearDelay(6)}>
+          <h2 className="px-1 text-xs font-medium text-muted-foreground">
+            Другое
+          </h2>
+          <Link
+            to={paths.products}
+            className="flex items-center justify-between gap-3 rounded-md px-1 py-1.5 text-sm hover:bg-muted"
+          >
+            <span>Продакты</span>
+            <span className="font-mono text-xs text-muted-foreground">
+              /products
+            </span>
+          </Link>
+        </div>
       </section>
     </div>
   );

@@ -8,6 +8,7 @@ import {
   MenubarRadioItem,
   MenubarTrigger,
 } from "@/components/ui/menubar";
+import Link from "@/components/Link";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -23,15 +24,16 @@ import ThemeToggle from "@/components/ThemeToggle";
 import echpochmarik from "@/assets/echpochmarik.png";
 import { WORK_GROUPS } from "@/data/workGroups";
 import { APPEAR, appearDelay } from "@/lib/appear";
+import { navigate, paths } from "@/lib/routes";
 import { TEAM_SYNC_TEAMS } from "@/lib/teams";
 import { cn } from "@/lib/utils";
 
 const MENU_CLOSE_DELAY = 120;
 
-function MobileNavItem({ selected, onSelect, children }) {
+function MobileNavItem({ selected, to, onSelect, children }) {
   return (
-    <button
-      type="button"
+    <Link
+      to={to}
       className={cn(
         "flex w-full cursor-pointer items-center rounded-md px-2 py-2 text-left text-sm",
         selected ? "bg-muted font-medium" : "hover:bg-muted/50",
@@ -40,24 +42,13 @@ function MobileNavItem({ selected, onSelect, children }) {
     >
       <span className="min-w-0 flex-1 truncate">{children}</span>
       {selected && <Check className="size-4 shrink-0" />}
-    </button>
+    </Link>
   );
 }
 
-function MobileNav({
-  direction,
-  activeTeam,
-  activeGroupId,
-  onSelectTeam,
-  onSelectGroup,
-  onSelectProducts,
-}) {
+function MobileNav({ direction, activeTeam, activeGroupId }) {
   const [open, setOpen] = useState(false);
-
-  const choose = (fn) => {
-    fn();
-    setOpen(false);
-  };
+  const close = () => setOpen(false);
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -85,8 +76,9 @@ function MobileNav({
             {TEAM_SYNC_TEAMS.map((team) => (
               <MobileNavItem
                 key={team.id}
+                to={paths.team(team.id)}
                 selected={direction === "teams" && activeTeam === team.id}
-                onSelect={() => choose(() => onSelectTeam(team.id))}
+                onSelect={close}
               >
                 {team.label}
               </MobileNavItem>
@@ -100,8 +92,9 @@ function MobileNav({
             {WORK_GROUPS.map((group) => (
               <MobileNavItem
                 key={group.id}
+                to={paths.group(group.id)}
                 selected={direction === "groups" && activeGroupId === group.id}
-                onSelect={() => choose(() => onSelectGroup(group.id))}
+                onSelect={close}
               >
                 {group.name}
               </MobileNavItem>
@@ -110,8 +103,9 @@ function MobileNav({
           <Separator />
           <section className="flex flex-col gap-1">
             <MobileNavItem
-              selected={direction === "other"}
-              onSelect={() => choose(onSelectProducts)}
+              to={paths.products}
+              selected={direction === "products"}
+              onSelect={close}
             >
               Синки продактов
             </MobileNavItem>
@@ -122,15 +116,7 @@ function MobileNav({
   );
 }
 
-export default function AppHeader({
-  direction,
-  activeTeam,
-  activeGroupId,
-  onGoHome,
-  onSelectTeam,
-  onSelectGroup,
-  onSelectProducts,
-}) {
+export default function AppHeader({ direction, activeTeam, activeGroupId }) {
   const [openMenu, setOpenMenu] = useState("");
   const closeTimer = useRef(null);
 
@@ -147,9 +133,8 @@ export default function AppHeader({
   return (
     <header className="fixed inset-x-0 top-0 z-50 border-b bg-background">
       <div className="mx-auto flex h-14 w-full max-w-[1180px] items-center justify-between px-5">
-        <button
-          type="button"
-          onClick={onGoHome}
+        <Link
+          to={paths.home}
           aria-label="На главную"
           className={cn(
             "-ml-1.5 flex cursor-pointer items-center gap-2 rounded-md px-1.5 py-1 font-heading text-sm font-medium tracking-tight hover:bg-muted",
@@ -165,7 +150,7 @@ export default function AppHeader({
             className="size-6 rounded-full bg-black"
           />
           Эчпочмарик
-        </button>
+        </Link>
         <div className="flex items-center gap-2">
           <span className={APPEAR} style={appearDelay(1)}>
             <HeaderTimer />
@@ -195,7 +180,7 @@ export default function AppHeader({
                         value={team.id}
                         className={APPEAR}
                         style={appearDelay(i)}
-                        onClick={() => onSelectTeam(team.id)}
+                        onClick={() => navigate(paths.team(team.id))}
                       >
                         {team.label}
                       </MenubarRadioItem>
@@ -226,7 +211,7 @@ export default function AppHeader({
                         value={group.id}
                         className={APPEAR}
                         style={appearDelay(i)}
-                        onClick={() => onSelectGroup(group.id)}
+                        onClick={() => navigate(paths.group(group.id))}
                       >
                         {group.name}
                       </MenubarRadioItem>
@@ -236,9 +221,9 @@ export default function AppHeader({
               </MenubarMenu>
               <MenubarMenu value="products">
                 <MenubarTrigger
-                  className={cn(direction === "other" && "bg-muted", APPEAR)}
+                  className={cn(direction === "products" && "bg-muted", APPEAR)}
                   style={appearDelay(4)}
-                  onClick={onSelectProducts}
+                  onClick={() => navigate(paths.products)}
                   onPointerEnter={scheduleClose}
                 >
                   Синки продактов
@@ -250,9 +235,6 @@ export default function AppHeader({
             direction={direction}
             activeTeam={activeTeam}
             activeGroupId={activeGroupId}
-            onSelectTeam={onSelectTeam}
-            onSelectGroup={onSelectGroup}
-            onSelectProducts={onSelectProducts}
           />
           <ThemeToggle />
         </div>
