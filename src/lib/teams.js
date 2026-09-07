@@ -21,7 +21,7 @@ export const FIXED_PARTICIPANTS = [
   "Алина Сунгатуллина",
   "Николай Турков",
   "Алёна Конышева",
-  "Илона Коско",
+  "Илона Лейман",
 ];
 
 export const RKO_PARTICIPANTS = [
