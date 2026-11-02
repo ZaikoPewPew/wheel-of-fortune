@@ -1,4 +1,4 @@
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { APPEAR, appearDelay } from "@/lib/appear";
 import { cn } from "@/lib/utils";
@@ -34,9 +34,6 @@ export default function WinnerResult({ winner, visual, onAgain, onEdit }) {
           )}
           style={appearDelay(0)}
         >
-          {visual?.kind === "avatar" && (
-            <AvatarImage src={visual.src} alt={winner} />
-          )}
           <AvatarFallback className="text-lg">{initials}</AvatarFallback>
         </Avatar>
       )}

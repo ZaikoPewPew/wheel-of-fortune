@@ -168,7 +168,7 @@ export default function WheelOfFortune() {
     setHistoryByTeam((prev) => ({ ...prev, [currentTeam.id]: [] }));
   };
 
-  const winnerVisual = getWinnerVisual(winnerTeamId, winner);
+  const winnerVisual = getWinnerVisual(winnerTeamId);
 
   return (
     <div className="flex min-h-svh flex-col bg-background">

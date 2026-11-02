@@ -74,9 +74,6 @@ export const OTHER_SYNC_TEAMS = TEAMS.filter((t) => t.id === "products");
 
 export const WHEEL_SIZE = 560;
 
-export const VIKA_WINNER_IMAGE =
-  "https://static-cdn.jtvnw.net/jtv_user_pictures/92d2f6bf-fcf8-4fc7-a8e6-5fadc57ca820-profile_image-70x70.png";
-
 export const WINNER_MEME_IMAGE =
   "https://images.meme-arsenal.com/a40fe7393d739a369ae2d4bd7e111f4d.jpg";
 
@@ -98,11 +95,8 @@ export function preloadWinnerMeme() {
 
 preloadWinnerMeme();
 
-export function getWinnerVisual(teamId, winnerName) {
+export function getWinnerVisual(teamId) {
   if (teamId === "products") return null;
-  if (teamId === "acquiring" && winnerName === "Виктория Кистова") {
-    return { src: VIKA_WINNER_IMAGE, kind: "avatar" };
-  }
   if (TEAMS_WITH_MEME_WINNER.has(teamId)) {
     return { src: WINNER_MEME_IMAGE, kind: "meme" };
   }
